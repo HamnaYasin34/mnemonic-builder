@@ -1,0 +1,162 @@
+/* app/globals.css */
+/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets ────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Thin custom scrollbar for vault */
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #242424;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #333;
+  }
+
+  /* Selection */
+  ::selection {
+    background: rgba(13, 242, 125, 0.2);
+    color: #f0f0f0;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Consistent, visible keyboard focus ring across every interactive element */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #050505, 0 0 0 4px rgba(13, 242, 125, 0.6);
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ── Component utilities ────────────────────────────────────────────────────── */
+@layer components {
+
+  /* Glassmorphism surface */
+  .glass {
+    @apply bg-[rgba(14,14,14,0.8)] backdrop-blur-xl border border-border;
+  }
+
+  /* Neon text glow */
+  .text-glow-green {
+    text-shadow: 0 0 12px rgba(13, 242, 125, 0.6);
+  }
+
+  /* Card hover lift */
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md;
+  }
+
+  /* Input focus ring override */
+  .input-neon {
+    @apply outline-none focus:ring-1 focus:ring-neon-green-glow focus:border-neon-green-border transition-all;
+  }
+
+  /* Neon subject border utilities */
+  .border-neon-anatomy { border-color: rgba(255, 77, 109, 0.35); }
+  .border-neon-pharma  { border-color: rgba(77, 247, 200, 0.35); }
+  .border-neon-physio  { border-color: rgba(255, 214, 10, 0.35); }
+  .border-neon-biochem { border-color: rgba(199, 125, 255, 0.35); }
+  .border-neon-patho   { border-color: rgba(255, 107, 53, 0.35); }
+  .border-neon-micro   { border-color: rgba(0, 180, 252, 0.35); }
+
+  /* Skeleton shimmer sweep, layered on top of the base pulse */
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+    background-size: 400px 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Flashcard 3D flip */
+  .flip-card { perspective: 1200px; }
+  .flip-card-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s cubic-bezier(0.4, 0.2, 0.2, 1);
+  }
+  .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
+  .flip-card-face {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip-card-back { transform: rotateY(180deg); }
+
+  /* Icon-only button used throughout premium action rows */
+  .icon-btn {
+    @apply relative flex items-center justify-center rounded-lg text-ink-tertiary border border-transparent transition-all duration-200;
+  }
+  .icon-btn:hover:not(:disabled) {
+    @apply text-ink-primary bg-elevated border-border;
+  }
+  .icon-btn:active:not(:disabled) { transform: scale(0.92); }
+  .icon-btn:disabled { @apply opacity-40 pointer-events-none; }
+  .icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(13, 242, 125, 0.5);
+  }
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Staggered animation delays ─────────────────────────────────────────────── */
+@layer utilities {
+  .delay-75  { animation-delay: 75ms; }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-150 { animation-delay: 150ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-500 { animation-delay: 500ms; }
+}
