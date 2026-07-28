@@ -1,4 +1,4 @@
-<img width="1958" height="927" alt="image" src="https://github.com/user-attachments/assets/beb5ef29-7a13-4fe3-b6c4-fb245af2ae8c" /># 🧠 MnemonicFlow Pro – AI Medical Mnemonics for MBBS
+# 🧠 MnemonicFlow Pro – AI Medical Mnemonics for MBBS
 
 > **An AI-powered learning platform that helps medical students learn faster, remember longer, and revise smarter.**
 
