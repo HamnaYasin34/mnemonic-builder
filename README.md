@@ -181,7 +181,7 @@ The AI is instructed with the following prompt:
 
 ## Artificial Intelligence
 
-- Google Gemini API
+- Google Gemini API, Claude, joules
 
 ---
 
