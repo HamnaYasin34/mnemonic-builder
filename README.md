@@ -1,175 +1,375 @@
-# MnemonicFlow Pro
+# 🧠 MnemonicFlow Pro – AI Medical Mnemonics for MBBS
 
-> Premium AI-powered medical mnemonics for MBBS students. Built with Next.js 14, Tailwind CSS, and GPT-4o.
-
-![MnemonicFlow Pro — Midnight Interface](./public/preview.png)
+> **An AI-powered learning platform that helps medical students learn faster, remember longer, and revise smarter.**
 
 ---
 
-## Features
+# 📖 Overview
 
-- **3-Column Midnight Interface** — Glassmorphic sidebar · Focus workspace · Vault feed
-- **3-in-1 AI Engine** — Story mnemonic + Pixar visual prompt + Anki card in one API call
-- **Secure by design** — API key lives server-side in Next.js API Routes only
-- **SM-2 Spaced Repetition** — Review badges based on 24h initial interval
-- **Anki CSV Export** — Professional `.txt` import-ready for Anki desktop
-- **Supabase-ready** — localStorage now, one-file swap to Supabase later
+MnemonicFlow Pro is an AI-powered educational web application designed specifically for MBBS and healthcare students who struggle with memorising vast amounts of medical information.
+
+Medical education demands learning thousands of facts, pathways, diseases, drugs, and anatomical structures in a limited amount of time. Traditional memorisation techniques often become overwhelming and inefficient.
+
+MnemonicFlow Pro transforms difficult medical concepts into memorable AI-generated mnemonics, interactive flashcards, quizzes, and concise revision notes, helping students retain information more effectively through active recall and spaced repetition principles.
+
+This project was developed as my final ACT AI application project and is also the foundation of a startup idea that I am actively building to improve medical education through artificial intelligence.
 
 ---
 
-## Project Structure
+# 🎯 Problem Statement
+
+Medical students spend countless hours trying to memorise complex concepts, yet retention remains a major challenge.
+
+Most existing resources are either:
+
+- Static
+- Time-consuming
+- Not personalised
+- Lack AI-powered learning assistance
+
+MnemonicFlow Pro addresses this problem by providing instant AI-generated medical mnemonics and revision tools that make studying more efficient, engaging, and memorable.
+
+---
+
+# 🌍 Who Is It For?
+
+- MBBS Students
+- Medical Students
+- Dental Students
+- Nursing Students
+- Allied Health Students
+- Healthcare Professionals preparing for examinations
+
+---
+
+# 🌐 Live Demo
+
+## Live Application
+
+https://mnemonic-flow.vercel.app
+
+---
+
+# 💻 GitHub Repository
+
+## Public Repository
+
+https://github.com/HamnaYasin34/mnemonic-builder
+
+---
+
+# ✨ Features
+
+## 🤖 AI Mnemonic Generator
+
+Generate memorable and medically relevant mnemonics using AI.
+
+---
+
+## 📚 Subject Selection
+
+Choose from different medical subjects including:
+
+- Anatomy
+- Physiology
+- Biochemistry
+- Pathology
+- Pharmacology
+- Microbiology
+- Community Medicine
+- Surgery
+- Medicine
+
+---
+
+## 🧠 Interactive Flashcards
+
+Every generated mnemonic is displayed as an interactive revision flashcard.
+
+Features include:
+
+- Active recall
+- Difficulty rating
+- Quick review
+- Copy text
+
+---
+
+## 📖 High-Yield Notes
+
+Quick revision notes designed for exam preparation.
+
+---
+
+## 🎯 Quiz Arena
+
+Practice medical concepts using active recall quizzes.
+
+---
+
+## 👤 User Authentication
+
+Secure authentication powered by Supabase.
+
+---
+
+## 🌙 Modern User Interface
+
+- Responsive Design
+- Dark Theme
+- Clean Dashboard
+- Mobile Friendly
+
+---
+
+## ☁️ Cloud Deployment
+
+Fully deployed on Vercel for public access.
+
+---
+
+# 🤖 AI Feature
+
+The core feature of MnemonicFlow Pro is an AI-powered mnemonic generator.
+
+The user simply enters a medical topic, and the AI generates:
+
+- A memorable mnemonic
+- A concise explanation
+- Revision-friendly flashcards
+
+This significantly reduces study time while improving long-term memory retention.
+
+---
+
+# 📝 AI Instructions / System Prompt
+
+The AI is instructed with the following prompt:
+
+> You are an expert medical educator specialising in helping MBBS students remember complex medical concepts. Generate medically accurate, memorable, concise, and creative mnemonics using simple language. Ensure all information is scientifically correct, examination-oriented, and easy to recall. Whenever appropriate, provide a brief explanation of the mnemonic without including unnecessary information.
+
+---
+
+# 🛠 Technologies Used
+
+## Frontend
+
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+---
+
+## Backend
+
+- Next.js API Routes
+
+---
+
+## Authentication
+
+- Supabase Authentication
+
+---
+
+## Database
+
+- Supabase
+
+---
+
+## Artificial Intelligence
+
+- Google Gemini API
+
+---
+
+## Deployment
+
+- Vercel
+
+---
+
+## Version Control
+
+- GitHub
+
+---
+
+# 📂 Project Structure
 
 ```
-mnemonicflow-pro/
-├── app/
-│   ├── api/
-│   │   └── generate/
-│   │       └── route.ts        ← Secure OpenAI API route
-│   ├── components/
-│   │   ├── Sidebar.tsx         ← Left: glassmorphic subject nav
-│   │   ├── Workspace.tsx       ← Center: generation focus mode
-│   │   └── VaultPanel.tsx      ← Right: neon flashcard vault
-│   ├── lib/
-│   │   ├── subjects.ts         ← Medical subject config
-│   │   ├── vault.ts            ← Persistence + SM-2 algorithm
-│   │   └── utils.ts            ← cn() and helpers
-│   ├── types/
-│   │   └── index.ts            ← All TypeScript types
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx                ← Root 3-column layout
-├── tailwind.config.js          ← Full neon color system + animations
-├── next.config.js
-├── .env.local.template         ← Copy to .env.local and add your key
-└── .gitignore
+app/
+│
+├── api/
+├── auth/
+├── components/
+├── lib/
+├── login/
+├── profile/
+├── globals.css
+├── layout.tsx
+└── page.tsx
+
 ```
 
 ---
 
-## Quick Start
+# 📸 Screenshots
 
-### 1. Install dependencies
+## Home Dashboard
+
+<img width="2080" height="957" alt="image" src="https://github.com/user-attachments/assets/6ca9745b-836e-4d15-a6a2-bd4d3bd176c8" />
+
+
+---
+
+## AI Mnemonic Generation
+
+<img width="2070" height="964" alt="image" src="https://github.com/user-attachments/assets/19d52de1-34c4-4f56-80dc-7b915f73c393" />
+<img width="2048" height="933" alt="image" src="https://github.com/user-attachments/assets/31b84911-8148-49d9-aca3-00c042c98d20" />
+
+
+
+
+
+## Quiz Arena
+
+> Insert Screenshot Here
+
+---
+
+## Mobile Responsive View
+
+> Insert Screenshot Here
+
+---
+
+# 🚀 How to Run the Project Locally
+
+## 1. Clone the Repository
+
+```bash
+git clone https://github.com/HamnaYasin34/mnemonic-builder.git
+```
+
+---
+
+## 2. Navigate into the Project
+
+```bash
+cd mnemonic-builder
+```
+
+---
+
+## 3. Install Dependencies
+
 ```bash
 npm install
-# or
-pnpm install
 ```
 
-### 2. Set up your OpenAI key
-```bash
-cp .env.local.template .env.local
+---
+
+## 4. Configure Environment Variables
+
+Create a file named:
+
 ```
-Then edit `.env.local`:
+.env.local
+```
+
+Add the following:
+
 ```env
-OPENAI_API_KEY=sk-your-real-key-here
-```
-> ⚠️ **Security**: The key is accessed only in `app/api/generate/route.ts` — it never reaches the browser. Do NOT prefix with `NEXT_PUBLIC_`.
+NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
 
-### 3. Run dev server
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
+
+---
+
+## 5. Start the Development Server
+
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## Color System (tailwind.config.js)
+## 6. Open in Browser
 
-All neon accents are defined as Tailwind tokens:
-
-| Token | Hex | Used for |
-|---|---|---|
-| `neon-green` | `#0df27d` | Brand accent, buttons, glow |
-| `neon-anatomy` | `#ff4d6d` | Anatomy subject |
-| `neon-pharma` | `#4df7c8` | Pharmacology / Surgery |
-| `neon-physio` | `#ffd60a` | Physiology |
-| `neon-biochem` | `#c77dff` | Biochemistry |
-| `neon-patho` | `#ff6b35` | Pathology |
-| `neon-micro` | `#00b4fc` | Microbiology |
-| `neon-review` | `#ff9a00` | Review due badge |
-
-Each color also has `neon-{color}-dim` (15% opacity bg), `neon-{color}-border` (25% opacity), and `neon-{color}-glow` (box-shadow) variants.
-
----
-
-## Spaced Repetition (SM-2)
-
-Cards follow the **SM-2** algorithm (`app/lib/vault.ts`):
-
-- **Initial interval**: 1 day
-- **Ease factor**: starts at 2.5, adjusts with each review
-- **Review quality**: 0 (blackout) → 5 (perfect)
-
-```ts
-import { vault, sm2 } from './lib/vault'
-
-// After a user reviews a card
-vault.review(cardId, 4)  // quality 4 = correct after hesitation
+```
+http://localhost:3000
 ```
 
 ---
 
-## Swapping localStorage → Supabase
+# 🚀 Future Roadmap
 
-In `app/lib/vault.ts`, find the two marked functions:
+The current version is the MVP (Minimum Viable Product).
 
-```ts
-// SWAP POINT: Replace loadRaw() and saveRaw() for Supabase
-function loadRaw(): VaultState { ... }
-function saveRaw(state: VaultState): void { ... }
-```
+Future improvements include:
 
-Replace with:
-```ts
-async function loadRaw(): Promise<VaultState> {
-  const { data } = await supabase
-    .from('vaults')
-    .select('cards, version')
-    .eq('user_id', userId)
-    .single()
-  return data ?? emptyVault()
-}
-```
-
-All other vault methods (`vault.add`, `vault.delete`, `vault.review`) call these two functions — nothing else changes.
+- Personal Vault for saved mnemonics
+- Improved Anki flashcard export
+- Advanced spaced repetition scheduling
+- AI-generated medical diagrams
+- Progress analytics dashboard
+- Topic bookmarking
+- Revision planner
+- Collaborative study groups
+- Offline study mode
+- Personalized AI tutor
+- Multi-device synchronisation
 
 ---
 
-## Anki Export Format
+# 🌟 Startup Vision
 
-The CSV export uses **tab-separated values** compatible with Anki's importer:
-- **Deck**: `MnemonicFlow Pro`
-- **Note type**: `Basic`
-- **Back field** includes: answer + story mnemonic + visual prompt
+MnemonicFlow Pro is not just a university project—it is the early prototype of a startup that I am actively developing.
 
----
+The long-term vision is to create an AI-powered medical learning ecosystem that helps healthcare students worldwide study more efficiently using personalised mnemonics, intelligent revision tools, adaptive learning, and evidence-based memory techniques.
 
-## API Route Security
-
-`POST /api/generate` features:
-- Server-side OpenAI key (never in client bundle)
-- Input validation (topic length, required fields)
-- Simple in-memory rate limiting (20 req/hr/IP)
-- `response_format: { type: 'json_object' }` for reliable JSON parsing
-- Structured error responses
+This project represents the first step toward building that vision.
 
 ---
 
-## Deploying to Vercel
+# ⚠️ Known Issue
 
-```bash
-npx vercel
-```
+The application is fully deployed and the core AI-powered mnemonic generation, flashcards, quizzes, and revision features are functional.
 
-Add `OPENAI_API_KEY` in Vercel Dashboard → Settings → Environment Variables.
+At the time of submission, one known production issue remains with Supabase email verification. After account registration, the email verification redirect for production deployment is still being finalised. As a temporary workaround, users can verify their email and then sign in manually.
+
+This issue does **not** affect the primary AI functionality or the overall user experience of the application's core learning features, and it is currently being addressed as part of ongoing development.
 
 ---
 
-## Roadmap
+# 👩‍💻 Developer
 
-- [ ] Supabase auth + multi-user vault
-- [ ] AI image generation (DALL-E 3 integration)
-- [ ] Mobile responsive layout
-- [ ] Progress analytics dashboard
-- [ ] Collaborative study rooms
-- [ ] MCQ generator from vault cards
+**Hamna Yasin**
+
+MBBS Student
+
+Dow University of Health Sciences (DUHS)
+
+Karachi, Pakistan
+
+---
+
+# 📄 License
+
+This project was developed as part of the **ACT AI Final Project**.
+
+It is intended for educational purposes and serves as the foundation for the future development of **MnemonicFlow Pro**, an AI-powered medical education startup.
+
+---
+
+## ⭐ Thank You
+
+Thank you for reviewing MnemonicFlow Pro.
+
+I hope this project demonstrates not only my technical skills in building an end-to-end AI-powered application but also my passion for solving real-world educational challenges through technology.
