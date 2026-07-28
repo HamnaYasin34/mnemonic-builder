@@ -1,4 +1,4 @@
-# 🧠 MnemonicFlow Pro – AI Medical Mnemonics for MBBS
+<img width="1958" height="927" alt="image" src="https://github.com/user-attachments/assets/beb5ef29-7a13-4fe3-b6c4-fb245af2ae8c" /># 🧠 MnemonicFlow Pro – AI Medical Mnemonics for MBBS
 
 > **An AI-powered learning platform that helps medical students learn faster, remember longer, and revise smarter.**
 
@@ -229,6 +229,9 @@ app/
 
 <img width="2070" height="964" alt="image" src="https://github.com/user-attachments/assets/19d52de1-34c4-4f56-80dc-7b915f73c393" />
 <img width="2048" height="933" alt="image" src="https://github.com/user-attachments/assets/31b84911-8148-49d9-aca3-00c042c98d20" />
+<img width="2039" height="927" alt="image" src="https://github.com/user-attachments/assets/b61bf954-0b80-4af9-958f-6147a44a04b4" />
+<img width="1958" height="927" alt="image" src="https://github.com/user-attachments/assets/1519207b-19ae-4f76-b93e-f8761ac48dc1" />
+
 
 
 
@@ -236,13 +239,14 @@ app/
 
 ## Quiz Arena
 
-> Insert Screenshot Here
 
----
+<img width="2013" height="937" alt="image" src="https://github.com/user-attachments/assets/ad83a945-bc4b-4927-b738-4faa4f206dbe" />
+
 
 ## Mobile Responsive View
 
-> Insert Screenshot Here
+<img width="642" height="1389" alt="IMG_8431" src="https://github.com/user-attachments/assets/8f5282bf-1840-4a38-b031-d7f2243eb48a" />
+
 
 ---
 
@@ -350,7 +354,7 @@ This issue does **not** affect the primary AI functionality or the overall user 
 
 # 👩‍💻 Developer
 
-**Hamna Yasin**
+**Hamna Yaseen**
 
 MBBS Student
 
