@@ -16,9 +16,14 @@ export default function LoginPage() {
   const handleSubmit = async () => {
     setLoading(true); setError(''); setMessage('')
     if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({
-        email, password, options: { data: { full_name: fullName } }
-      })
+     const { error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: { full_name: fullName },
+    emailRedirectTo: "https://mnemonic-flow.vercel.app/auth/callback",
+  },
+})
       if (error) setError(error.message)
       else setMessage('Check your email to confirm your account!')
     } else {
