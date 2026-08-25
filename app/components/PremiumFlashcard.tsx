@@ -64,18 +64,18 @@ export default function PremiumFlashcard({
       {/* Premium 3D Flip Card Container */}
       <div
         onClick={() => setFlipped(f => !f)}
-        className="relative h-44 cursor-pointer select-none perspective-1000 group w-full"
+        className={cn('flip-card relative h-44 cursor-pointer select-none group w-full', flipped && 'is-flipped')}
         role="button"
         aria-label="Click to flip flashcard"
       >
         <div
           className={cn(
-            'relative w-full h-full transition-transform duration-500 transform-style-3d shadow-card-lg rounded-2xl border',
-            flipped ? 'rotate-y-180 border-neon-biochem-border bg-neon-biochem-dim/15' : 'border-neon-green-border bg-neon-green-dim/15'
+            'flip-card-inner w-full h-full shadow-card-lg rounded-2xl border',
+            flipped ? 'border-neon-biochem-border bg-neon-biochem-dim/15' : 'border-neon-green-border bg-neon-green-dim/15'
           )}
         >
           {/* Card Front face */}
-          <div className="absolute inset-0 p-5 rounded-2xl backface-hidden flex flex-col justify-between bg-card/10 backdrop-blur-md">
+          <div className="flip-card-face absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/10 backdrop-blur-md">
             <div className="flex items-center justify-between w-full">
               <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-neon-green-dim border border-neon-green-border text-neon-green font-bold uppercase tracking-wider">
                 Mnemonic Anchor
@@ -109,7 +109,7 @@ export default function PremiumFlashcard({
           </div>
 
           {/* Card Back face */}
-          <div className="absolute inset-0 p-5 rounded-2xl backface-hidden rotate-y-180 flex flex-col justify-between bg-card/10 backdrop-blur-md">
+          <div className="flip-card-face flip-card-back absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/10 backdrop-blur-md">
             <div className="flex items-center justify-between w-full">
               <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-neon-biochem-dim border border-neon-biochem-border text-neon-biochem font-bold uppercase tracking-wider">
                 Anki Flashcard Back

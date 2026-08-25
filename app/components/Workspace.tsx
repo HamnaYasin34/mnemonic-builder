@@ -145,11 +145,8 @@ const STORY_STYLES_INFO = [
   },
 ]
 
-// ── Image generation via Pollinations (client-side, no key needed) ──────────
-function buildImageUrl(compiledPrompt: string): string {
-  const seed = Math.floor(Math.random() * 999999)
-  return `https://image.pollinations.ai/p/${encodeURIComponent(compiledPrompt)}?width=1024&height=640&seed=${seed}&nologo=true`
-}
+// ── (No client-side image URL builder — image generation now goes through
+// /api/image, which calls Pollinations server-side with the secret key.) ──
 
 // ── Dynamic High-yield Quiz Question Generator ──────────────────────────────
 interface QuizQuestion {
@@ -289,23 +286,25 @@ export default function Workspace({
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
-  // ── Image generation via Pollinations ────────────────────────────────────
+  // ── Image generation via Gemini (/api/image) ─────────────────────────────
   const generateImg = useCallback(async (promptText: string) => {
     setImgStatus('generating')
     try {
-      const url = buildImageUrl(promptText)
-      const img = new Image()
-      img.src = url
-      await new Promise((resolve, reject) => {
-        img.onload = resolve
-        img.onerror = reject
+      const res = await fetch('/api/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visualScene: promptText, topic: topic.trim(), style: visualStyle }),
       })
-      setImageUrl(url)
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error ?? 'Image generation failed.')
+
+      const dataUrl = `data:${json.image.mimeType};base64,${json.image.data}`
+      setImageUrl(dataUrl)
       setImgStatus('success')
     } catch {
       setImgStatus('error')
     }
-  }, [])
+  }, [topic, visualStyle])
 
   // Auto-scroll to loading skeletal state or results
   useEffect(() => {
@@ -471,6 +470,8 @@ export default function Workspace({
                 {([
                   { key: 'hybrid' as const, label: '🧠 Spatial Hybrid', desc: 'Acronym + storyline' },
                   { key: 'storyline' as const, label: '🎭 Pure Story', desc: 'Continuous narrative' },
+                  { key: 'hook' as const, label: '⚡ Crazy Hook', desc: 'One absurd, unforgettable line' },
+                  { key: 'auto' as const, label: '✨ Auto Select', desc: 'AI picks the best fit' },
                 ]).map(opt => (
                   <button
                     key={opt.key}
@@ -1343,13 +1344,13 @@ function FlipPreview({ card }: { card: { topic: string; subject: string; mnemoni
   return (
     <div
       onClick={() => setFlipped(f => !f)}
-      className="relative h-28 cursor-pointer select-none"
+      className={cn('flip-card relative h-28 cursor-pointer select-none', flipped && 'is-flipped')}
       role="button"
       aria-label="Click to flip flashcard preview"
     >
-      <div className={cn('relative w-full h-full transition-transform duration-500 transform-style-3d', flipped && 'rotate-y-180')}>
+      <div className="flip-card-inner w-full h-full">
         {/* Front */}
-        <div className="absolute inset-0 p-4 rounded-xl border border-neon-green-border bg-neon-green-dim flex flex-col justify-between backface-hidden shadow-glow-sm">
+        <div className="flip-card-face absolute inset-0 p-4 rounded-xl border border-neon-green-border bg-neon-green-dim flex flex-col justify-between shadow-glow-sm">
           <div className="flex items-center gap-1 text-[9px] text-neon-green font-mono font-bold uppercase tracking-wider">
             <Sparkles className="w-3 h-3 animate-pulse-glow" /> MNEMONIC ANCHOR · Click to flip
           </div>
@@ -1358,7 +1359,7 @@ function FlipPreview({ card }: { card: { topic: string; subject: string; mnemoni
         </div>
 
         {/* Back */}
-        <div className="absolute inset-0 p-4 rounded-xl border border-neon-biochem-border bg-neon-biochem-dim flex flex-col justify-between rotate-y-180 backface-hidden shadow-glow-biochem">
+        <div className="flip-card-face flip-card-back absolute inset-0 p-4 rounded-xl border border-neon-biochem-border bg-neon-biochem-dim flex flex-col justify-between shadow-glow-biochem">
           <div className="flex items-center gap-1 text-[9px] text-neon-biochem font-mono font-bold uppercase tracking-wider">
             <CreditCard className="w-3 h-3" /> ANKI FLASHCARD BACK
           </div>

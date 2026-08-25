@@ -16,7 +16,7 @@ export interface Subject {
   year: 1 | 2 | 3 | 4 | 5
 }
 
-export type MnemonicType = 'acronym' | 'storyline' | 'spatial' | 'hybrid'
+export type MnemonicType = 'acronym' | 'storyline' | 'spatial' | 'hybrid' | 'hook' | 'auto'
 export type VisualStyle = 'sketchy' | 'osmosis'
 
 // Narrative genre/voice the STORY is written in. Orthogonal to MnemonicType

@@ -6,6 +6,8 @@ const MNEMONIC_TYPE_RULES: Record<MnemonicType, string> = {
   storyline: 'Build the mnemonic as a CHARACTER-DRIVEN STORYLINE. One specific named character physically acts out the mechanism step by step across exactly 4 lines. The mnemonic field is the one-line absurd/hilarious hook sentence; the story field is the full scene.',
   spatial: 'Build the mnemonic as a VISUAL SPATIAL LAYOUT. Describe fixed positions (top-left, center, bottom-right, foreground, background) where each fact "lives" in the scene, the way a labeled anatomical diagram works. The story field should describe the spatial map in words; no characters required, just landmarks and labeled zones.',
   hybrid: 'Build the mnemonic as a HYBRID: a short acronym AND a 4-line character storyline AND explicit spatial positions for each fact in the scene. Combine all three so the acronym letters map onto labeled positions a character visits in order.',
+  hook: 'Build the mnemonic as ONE CRAZY HOOK: a single short, weird, visually vivid sentence or phrase the student can recall in 3-5 seconds — NOT a full acronym, NOT a multi-part structure. It must stay relevant to the real mechanism, not just be silly for its own sake. Easy beats clever: if a simpler, dumber sentence is more memorable than an elegant one, use the simpler one. The story field then briefly (in the 4 lines) shows this hook happening.',
+  auto: `AUTO-SELECT the best architecture for THIS specific topic before writing anything else, by privately reasoning through: how many discrete facts need encoding, whether there is a natural sequence or spatial/branching relationship, whether a clean acronym exists without being forced, and whether a single visual metaphor is strong enough to replace all of that. Then commit fully to ONE of: a strict acronym, a character-driven storyline, a spatial layout, a hybrid of these, or (if the concept is simple enough) a single crazy hook — whichever makes recall EASIEST, not most elaborate. Do not default to the same architecture every time; different topics should get different structures. State which architecture you chose as the first few words of the "mnemonicKey" field, e.g. "[Architecture: Pure Story] G = ...".`,
 }
 
 const VISUAL_STYLE_RULES: Record<VisualStyle, string> = {
@@ -132,6 +134,23 @@ const STORY_STYLE_SETTING_HINT: Record<StoryStyle, string> = {
   meme: 'a relatable modern-life meme scenario, never a hospital',
 }
 
+// Subject-specific memory design guidance (spec section 14) — tells the model
+// what kind of relationship to prioritize encoding for each subject, instead
+// of forcing every subject through the same storytelling formula.
+const SUBJECT_FOCUS_HINTS: Record<string, string> = {
+  anatomy: 'Prioritize SPATIAL relationships: position, landmarks, branches, routes, and how structures relate to their neighbors.',
+  physiology: 'Prioritize CAUSE → EFFECT: feedback loops, signals, dynamic regulation — what triggers what.',
+  biochemistry: 'Prioritize PATHWAYS: enzymes, substrates, products, regulation points, and what a deficiency breaks.',
+  pharmacology: 'Prioritize the CHAIN: drug → target → mechanism → effect → adverse effect, in that exact order.',
+  pathology: 'Prioritize CAUSE → CELLULAR CHANGE → MORPHOLOGY → MECHANISM → CLINICAL CONSEQUENCE.',
+  microbiology: 'Prioritize: organism → morphology → virulence factor → transmission → clinical presentation → diagnosis → treatment.',
+  medicine: 'Prioritize clinical reasoning: presentation → mechanism → diagnosis → management.',
+  surgery: 'Prioritize procedural/anatomical sequence and the specific complication or indication being tested.',
+}
+function subjectFocusHint(subject: string): string {
+  return SUBJECT_FOCUS_HINTS[subject] ?? 'Prioritize whichever relationship (spatial, causal, sequential, or pathway-based) makes this specific topic easiest to encode — do not force a generic structure onto it.'
+}
+
 function buildPrompt(
   topic: string,
   subject: string,
@@ -152,14 +171,27 @@ function buildPrompt(
 
 Topic: "${topic}"
 Subject: ${subject}
+Subject focus: ${subjectFocusHint(subject)}
+
+TOPIC/SUBJECT CHECK: If "${topic}" doesn't genuinely belong to ${subject} (e.g. a physiology topic entered under Anatomy), don't force a fake anatomical framing onto it. Either find the real anatomical angle if one honestly exists, or write the explanation from the discipline the topic actually belongs to and open the explanation with one short clause noting that, e.g. "(Primarily a physiology concept — explained accordingly.)" Never block generation over this, just be honest about it.
+
+ONE MEMORY WORLD RULE (most important rule): the mnemonic, the story, and the visual scene are not three separate creative outputs — they are three views of the SAME memory. Every character, object, location, or action in the story must correspond to a real medical fact, and every one of those elements must reappear, unchanged, in the visual scene. If you invent a detail for the story that doesn't map to anything medical, cut it. If a fact is important enough to be in the mnemonic, it needs a visual anchor. Do not generate a mnemonic, a story, and an image that merely share a topic — they must share the same characters, objects, and sequence.
+
+ANTI-REPETITION RULE: do not default to the same world every time regardless of style — e.g. don't make everything a city, a factory, a battlefield, or a detective's office just because it worked before. Do not reuse the same recurring metaphors (keys/locks/doors/cars/traffic/soldiers/messengers/villains) unless they are genuinely the strongest fit for THIS topic's actual mechanism. Build the metaphor from what the topic itself is doing, not from a stock toolkit.
 
 ${STORY_STYLE_RULES[storyStyle]}${forbiddenOpeners}${memeTemplateBlock}
 
 STRICT RULES:
 
-1. EXPLANATION: Exactly 3-4 sentences, max 6 lines. 70% precise medical jargon (mechanism, pathway, receptor-level detail) + 30% a vivid real-world analogy that makes the mechanism click instantly. High-yield only — the one fact that decides exam marks. This field stays clear and educational regardless of story style — it is the "answer key," not part of the performance.
+1. EXPLANATION (the Concept Layer — accuracy over entertainment, plain educational voice regardless of story style): 
+   - 1-2 concise sentences stating the core concept/definition.
+   - Then the mechanism as a clear chain: A → B → C → D (or however many steps are real).
+   - Then 2-4 High-Yield facts as short standalone sentences (cause/effect, key exceptions, important associations).
+   - If genuinely relevant, one closing sentence of clinical correlation.
+   - Total should still be compact — dense high-yield content, not padding. No jokes, no story voice here; this is the answer key the student actually studies from.
 
 2. THE MNEMONIC: ${MNEMONIC_TYPE_RULES[mnemonicType]}
+   Before finalizing it, silently check: is this actually easier to recall than the raw fact itself? Could a student repeat it after reading it once or twice? If not, simplify it rather than making it cleverer.
 
 3. THE STORYLINE:
 - EXACTLY 4 LINES in one cohesive paragraph (or the spatial-map equivalent if mnemonic type is "spatial")
@@ -167,18 +199,21 @@ STRICT RULES:
 - NO alphabet/letter explanations ever
 - Characters, forces, or zones must literally and physically/visually represent the medical mechanism step by step, using the ${storyStyle} world's own internal logic
 - Should read like a professionally written piece of ${storyStyle} fiction a person would actually want to read — not a teaching aid wearing a costume
+- Must use ONLY elements that map to real facts per the One Memory World rule above — no decorative characters or events with no medical meaning
 
-4. VISUAL SCENE: A vivid scene description of the exact storyline above, set in ${STORY_STYLE_SETTING_HINT[storyStyle]} — same characters/zones, same action/layout, specific pose/expression/props/positions. This will be fed directly to an image generator using a ${visualStyle === 'sketchy' ? 'Sketchy-style hand-drawn medical illustration' : 'Osmosis-style flat-vector whiteboard illustration'} renderer, so be concrete and literal about every visual element, not abstract.
+4. VISUAL SCENE: A vivid scene description of the exact storyline above, set in ${STORY_STYLE_SETTING_HINT[storyStyle]} — same characters/zones, same objects, same action/layout, specific pose/expression/props/positions, nothing added or removed. Prefer ONE coherent scene the eye can trace through the story's sequence, rather than several disconnected vignettes. This will be fed directly to an image generator using a ${visualStyle === 'sketchy' ? 'Clinical Ink™ hand-drawn medical illustration' : 'NeuroCanvas™ flat-vector whiteboard illustration'} renderer, so be concrete and literal about every visual element, not abstract. Choose whatever visual metaphor is strongest for THIS mechanism specifically (a receptor could be a lock, a checkpoint, a docking station, a courtroom entrance — whichever fits this topic, not a recycled default).
 
 5. QUICK QUIZ: One short, punchy self-test question that can be answered in one phrase, directly testing the highest-yield fact from the explanation — and its one-line answer.
 
+MEDICAL ACCURACY (non-negotiable): the metaphor, characters, and setting may be fictional — the underlying medicine may not be. Never invent a receptor function, anatomical structure, diagnostic test, drug mechanism, or clinical finding to make the story neater. If you're not certain a detail is correct, leave it out rather than guessing.
+
 Return ONLY this exact JSON, no markdown, no extra text:
 {
-  "explanation": "3-4 sentences, max 6 lines, 70% medical jargon 30% vivid analogy, high-yield only",
+  "explanation": "Concept in 1-2 sentences, then mechanism as A → B → C → D, then 2-4 high-yield facts, then clinical correlation if relevant. Plain educational voice.",
   "mnemonic": "THE MNEMONIC per the type rules above",
-  "mnemonicKey": "Word/letter/zone = medical fact. One line per item.",
+  "mnemonicKey": "Visual Memory Anchor decode guide: one 'Visual element → Medical fact' line per major anchor (not every tiny detail). If mnemonicType is auto, prefix with '[Architecture: <name chosen>] '.",
   "story": "EXACTLY 4 lines (or spatial map description), written fully in the ${storyStyle} voice and world. No letter explanations.",
-  "visualScene": "Concrete literal scene description matching the storyline exactly — characters/zones, positions, props, actions, set in ${STORY_STYLE_SETTING_HINT[storyStyle]}.",
+  "visualScene": "Concrete literal scene description matching the storyline exactly — same characters/zones, positions, props, actions, nothing added.",
   "ankiFront": "High-yield clinical exam question",
   "ankiBack": "Answer + clinical mechanism + mnemonic sentence as final takeaway",
   "quizQuestion": "One short punchy self-test question",
@@ -191,6 +226,127 @@ Return ONLY this exact JSON, no markdown, no extra text:
 function compileImagePrompt(visualScene: string, visualStyle: VisualStyle): string {
   const styleBlock = VISUAL_STYLE_RULES[visualStyle]
   return `${styleBlock} Scene to depict: ${visualScene}. ${NEGATIVE_PROMPT}`
+}
+
+/**
+ * LLMs sometimes emit raw, un-escaped control characters (literal newlines, tabs,
+ * carriage returns) inside JSON string values — e.g. a multi-line "story" field
+ * written with real line breaks instead of "\n". That's invalid JSON and makes
+ * JSON.parse throw "Unterminated string". This walks the text char-by-char,
+ * tracks whether we're inside a quoted string (respecting escape sequences),
+ * and escapes any stray control characters it finds there. It never touches
+ * characters outside of string literals, so the JSON structure itself is untouched.
+ */
+function sanitizeJsonControlChars(text: string): string {
+  let result = ''
+  let inString = false
+  let escapeNext = false
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+
+    if (escapeNext) {
+      result += ch
+      escapeNext = false
+      continue
+    }
+
+    if (ch === '\\') {
+      result += ch
+      escapeNext = true
+      continue
+    }
+
+    if (ch === '"') {
+      inString = !inString
+      result += ch
+      continue
+    }
+
+    if (inString) {
+      if (ch === '\n') { result += '\\n'; continue }
+      if (ch === '\r') { result += '\\r'; continue }
+      if (ch === '\t') { result += '\\t'; continue }
+    }
+
+    result += ch
+  }
+
+  return result
+}
+
+/**
+ * Handles genuine truncation: the response got cut off (max_tokens hit,
+ * or the stream ended early) partway through a string or before all
+ * brackets closed. This walks the text once, tracks whether we're still
+ * inside an open string and which brackets/braces are still open, then
+ * appends whatever's needed to make it syntactically valid JSON so we can
+ * at least recover the fields the model finished writing.
+ */
+function repairTruncatedJson(text: string): string {
+  let inString = false
+  let escapeNext = false
+  const stack: string[] = []
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+
+    if (escapeNext) { escapeNext = false; continue }
+    if (ch === '\\') { escapeNext = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+
+    if (!inString) {
+      if (ch === '{' || ch === '[') stack.push(ch)
+      else if (ch === '}' || ch === ']') stack.pop()
+    }
+  }
+
+  let result = text
+  // If we ended mid-string, close it before closing any brackets.
+  if (inString) result += '"'
+  // Close whatever braces/brackets never got closed, innermost first.
+  while (stack.length) {
+    const open = stack.pop()
+    result += open === '{' ? '}' : ']'
+  }
+
+  return result
+}
+
+/**
+ * Calls Groq's chat completions endpoint and, if it comes back with a 429
+ * (rate limit), automatically retries. Groq's 429 body includes a message
+ * like "...Please try again in 7.425s..." — we parse that exact delay when
+ * present so we wait just long enough, rather than guessing. Falls back to
+ * exponential backoff if the delay can't be parsed.
+ */
+async function fetchGroqWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3
+): Promise<Response> {
+  let lastResponse: Response | null = null
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options)
+
+    if (response.status !== 429 || attempt === maxRetries) {
+      return response
+    }
+
+    // Clone so the body can still be read again by the caller if this was
+    // actually the final attempt (fetch bodies can only be consumed once).
+    lastResponse = response
+    const bodyText = await response.clone().text().catch(() => '')
+    const match = bodyText.match(/try again in ([\d.]+)s/i)
+    const delaySeconds = match ? parseFloat(match[1]) : 1.5 * (attempt + 1)
+
+    console.warn(`[MnemonicFlow API] Groq rate-limited (attempt ${attempt + 1}/${maxRetries}); retrying in ${delaySeconds}s.`)
+    await new Promise(resolve => setTimeout(resolve, Math.min(delaySeconds, 15) * 1000 + 200))
+  }
+
+  // Unreachable in practice, but keeps TypeScript happy.
+  return lastResponse!
 }
 
 export async function POST(req: NextRequest) {
@@ -221,16 +377,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const response = await fetchGroqWithRetry('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         temperature: storyStyle === 'clinical' ? 0.93 : 1.05,
-        max_tokens: 1500,
+        max_tokens: 3500,
+        response_format: { type: 'json_object' },
         messages: [
           {
             role: 'system',
@@ -250,15 +407,75 @@ Output ONLY valid JSON, nothing else.`,
 
     const data = await response.json()
 
+    // Groq's response_format: json_object mode validates the model's output
+    // server-side. If the model produced malformed JSON, Groq rejects the
+    // whole request with a 400 and this specific error shape — but it still
+    // includes the model's raw (invalid) text under error.failed_generation.
+    // We treat that the same as any other raw completion and try to repair it,
+    // instead of just surfacing Groq's rejection to the user.
+    let raw: string
+    let finishReason: string | undefined
+
     if (!response.ok) {
-      const msg = data?.error?.message ?? `Groq API error: ${response.status}`
-      return NextResponse.json({ success: false, error: msg }, { status: 500 })
+      const failedGeneration = data?.error?.failed_generation
+      if (typeof failedGeneration === 'string' && failedGeneration.trim()) {
+        raw = failedGeneration
+      } else {
+        const msg = data?.error?.message ?? `Groq API error: ${response.status}`
+        return NextResponse.json({ success: false, error: msg }, { status: 500 })
+      }
+    } else {
+      raw = data?.choices?.[0]?.message?.content ?? ''
+      finishReason = data?.choices?.[0]?.finish_reason
     }
 
-    const raw = data?.choices?.[0]?.message?.content ?? ''
     const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
 
-    const parsed = JSON.parse(cleaned)
+    let parsed: any
+    try {
+      parsed = JSON.parse(cleaned)
+    } catch {
+      try {
+        // Fallback 1: model likely emitted raw newlines/tabs inside a JSON string
+        // (e.g. the multi-line "story" field). Escape those and retry.
+        parsed = JSON.parse(sanitizeJsonControlChars(cleaned))
+      } catch {
+        // Fallback 2: the response was genuinely cut off (max_tokens hit)
+        // partway through a string or before all brackets closed. Close
+        // things off so we can recover whatever fields did finish writing.
+        if (finishReason === 'length') {
+          console.warn('[MnemonicFlow API] Groq response was truncated (finish_reason=length); attempting repair.')
+        }
+        parsed = JSON.parse(repairTruncatedJson(sanitizeJsonControlChars(cleaned)))
+      }
+    }
+
+    // Sanity check: if any of the fields the rest of the app depends on came
+    // back missing or suspiciously short (a sign the repair above only
+    // recovered a fragment), fail loudly here rather than silently shipping
+    // a broken/empty visualScene down to the image generator — that's what
+    // was producing the abstract, content-less "ink blot" images instead of
+    // the requested scene.
+    const requiredFields: Array<[string, number]> = [
+      ['explanation', 20],
+      ['mnemonic', 5],
+      ['story', 20],
+      ['visualScene', 20],
+    ]
+    for (const [field, minLen] of requiredFields) {
+      const value = parsed?.[field]
+      if (typeof value !== 'string' || value.trim().length < minLen) {
+        console.error(`[MnemonicFlow API] Recovered JSON is missing/incomplete field "${field}".`, { raw })
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Generation came back incomplete (missing "${field}"). This usually means the response got cut off — try again.`,
+          },
+          { status: 500 }
+        )
+      }
+    }
+
     if (!Array.isArray(parsed.tags)) parsed.tags = [subject]
     // Authoritative — don't rely on the model to echo the chosen template back correctly.
     if (memeTemplate) parsed.memeTemplate = memeTemplate.name
@@ -268,8 +485,20 @@ Output ONLY valid JSON, nothing else.`,
 
     return NextResponse.json({ success: true, data: parsed })
   } catch (err: any) {
-    console.error('[MnemonicFlow API]', err)
-    return NextResponse.json({ success: false, error: err?.message ?? 'Generation failed. Try again.' }, { status: 500 })
+    // Node's fetch collapses real network failures (DNS, connection reset,
+    // timeout, firewall/proxy block) into a generic "fetch failed" message.
+    // The actual reason lives on err.cause — surface it so it's actionable
+    // instead of a dead end.
+    const cause = err?.cause
+    const causeMsg = cause?.message ?? (typeof cause === 'string' ? cause : undefined)
+    console.error('[MnemonicFlow API]', err, cause ? { cause } : '')
+
+    const isNetworkError = err?.message === 'fetch failed'
+    const friendlyMsg = isNetworkError
+      ? `Could not reach Groq's servers (network error${causeMsg ? `: ${causeMsg}` : ''}). Check your internet connection, VPN/firewall, or antivirus, and make sure you don't have multiple dev servers running at once.`
+      : err?.message ?? 'Generation failed. Try again.'
+
+    return NextResponse.json({ success: false, error: friendlyMsg }, { status: 500 })
   }
 }
 
