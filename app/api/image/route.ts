@@ -3,6 +3,7 @@ import {
   buildFinalPrompt,
   createPrimaryProvider,
   createFallbackProvider,
+  createPremiumProvider,
   PollinationsProvider,
   type ImageGenerationProvider,
   DEFAULT_ASPECT_RATIO,
@@ -37,27 +38,41 @@ export async function POST(req: NextRequest) {
   const finalPrompt = buildFinalPrompt(visualScene, visualStyle ?? 'sketchy')
 
   // ── Retry chain ────────────────────────────────────────────────────────────
-  // 1. Primary: Cloudflare Workers AI → Pollinations (first configured)
-  // 2. On transient failure: retry once with same provider
-  // 3. Pollinations flux-dev (better instruction following)
-  // 4. Pollinations flux-realism (always available, free, no auth)
+  // Provider priority (first configured wins):
+  //   1. Gemini Pro Image   (if GEMINI_API_KEY — best for long narrative prompts)
+  //   2. Cloudflare Workers AI (if CLOUDFLARE_* — free 100K neurons/day)
+  //   3. Pollinations flux-dev   (always available, good instruction following)
+  //   4. Pollinations flux-realism (last resort — maximum compatibility)
+  //
+  // IMPORTANT: flux-realism is a photorealistic model that produces generic
+  // cinematic scenes. It must ONLY be the last-resort fallback — never the
+  // primary. flux-dev follows illustration/style instructions much better.
   const primary = createPrimaryProvider()
   const fallback = createFallbackProvider()
 
-  // Log provider chain for debugging (visible in dev server console)
-  console.log(`[MnemonicFlow Image] Provider chain: primary=${primary.providerName}, fallback=${fallback.providerName}`)
-
   const providers: ImageGenerationProvider[] = [primary]
-  // When primary is non-Pollinations (Cloudflare), add both Pollinations tiers:
-  //   flux-dev (better instruction following) → flux-realism (maximum compatibility)
-  if (!primary.providerName.startsWith('pollinations:')) {
-    const pollDev = new PollinationsProvider('flux-dev')
-    providers.push(pollDev)
+
+  // Gemini premium (if configured) — best quality for long narrative prompts
+  const premium = createPremiumProvider()
+  if (premium && premium.providerName !== primary.providerName) {
+    providers.push(premium)
   }
-  // Always add flux-realism as last resort (if not already in the chain)
+
+  // Always include Pollinations flux-dev as intermediate (better instruction
+  // following than flux-realism). Skip only if primary is already flux-dev.
+  if (primary.providerName !== 'pollinations:flux-dev') {
+    const pollDev = new PollinationsProvider('flux-dev')
+    if (!providers.some(p => p.providerName === pollDev.providerName)) {
+      providers.push(pollDev)
+    }
+  }
+
+  // flux-realism as absolute last resort (if not already in the chain)
   if (!providers.some(p => p.providerName === fallback.providerName)) {
     providers.push(fallback)
   }
+
+  console.log(`[MnemonicFlow Image] Provider chain: ${providers.map(p => p.providerName).join(' → ')}`)
 
   let lastError: any
 

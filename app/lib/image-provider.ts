@@ -136,12 +136,13 @@ export const DEFAULT_CLOUDFLARE_MODEL = '@cf/black-forest-labs/flux-1-schnell'
  * Setup: https://dash.cloudflare.com → Workers AI → Use REST API
  */
 /**
- * Truncate a prompt to fit Cloudflare's 2048-char limit.
+ * Truncate a prompt to fit Cloudflare's token limit (~4000 chars ≈ 1000 tokens;
+ * FLUX.1-schnell supports up to 4096 tokens).
  * Preserves the beginning (narrative context + setting + characters + beats)
  * and the end (style instructions), dropping middle detail (object consistency,
  * action requirements, spatial details) when the prompt is too long.
  */
-export function truncatePromptForCloudflare(prompt: string, maxLen = 2000): string {
+export function truncatePromptForCloudflare(prompt: string, maxLen = 4000): string {
   if (prompt.length <= maxLen) return prompt
 
   // Keep the first ~1400 chars (narrative context, setting, character, beats)
@@ -299,7 +300,12 @@ export class PollinationsProvider implements ImageGenerationProvider {
 
 /**
  * Create the primary image provider.
- * Priority: Cloudflare Workers AI → Pollinations.
+ * Priority: Cloudflare Workers AI → Pollinations flux-dev.
+ *
+ * IMPORTANT: the primary Pollinations model is always flux-dev (best
+ * instruction following for mnemonic/illustration prompts). flux-realism
+ * is a photorealistic model that produces generic cinematic scenes — it
+ * must only be the last-resort fallback, never the primary.
  */
 export function createPrimaryProvider(): ImageGenerationProvider {
   // 1. Cloudflare Workers AI (best free option — 100K neurons/day)
@@ -310,8 +316,10 @@ export function createPrimaryProvider(): ImageGenerationProvider {
     return new CloudflareProvider(cfAccountId, cfApiToken, model)
   }
 
-  // 2. Pollinations (always available, free, no auth)
-  return new PollinationsProvider(process.env.POLLINATIONS_MODEL)
+  // 2. Pollinations flux-dev (always available, free, no auth)
+  // Explicitly flux-dev — NOT configurable via env var to prevent
+  // accidental flux-realism selection (which produces bland cinematic images).
+  return new PollinationsProvider('flux-dev')
 }
 
 /**
