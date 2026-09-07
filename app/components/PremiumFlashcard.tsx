@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Star, Bookmark, ThumbsDown, Meh, ThumbsUp, HelpCircle } from 'lucide-react'
+import { Star, Bookmark, ThumbsDown, Meh, ThumbsUp, HelpCircle, Brain } from 'lucide-react'
 import { ReviewQuality } from '../types'
 import { cn } from '../lib/utils'
 
@@ -15,6 +15,8 @@ interface PremiumFlashcardProps {
       ankiFront: string
       ankiBack: string
       explanation: string
+      question?: string
+      answer?: string
     }
   }
   isFavorite: boolean
@@ -22,13 +24,19 @@ interface PremiumFlashcardProps {
   onReview?: (quality: ReviewQuality) => void
   totalCards?: number
   currentIndex?: number
+  /** When true, show mnemonic details on the back of the card */
+  showMnemonic?: boolean
 }
 
 export default function PremiumFlashcard({
-  card, isFavorite, onToggleFav, onReview, totalCards, currentIndex
+  card, isFavorite, onToggleFav, onReview, totalCards, currentIndex, showMnemonic = false
 }: PremiumFlashcardProps) {
   const [flipped, setFlipped] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
+
+  // Backward compat: use question/answer if available, fall back to ankiFront/ankiBack
+  const front = card.mnemonic.question || card.mnemonic.ankiFront || card.topic
+  const back = card.mnemonic.answer || card.mnemonic.ankiBack || ''
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -43,42 +51,42 @@ export default function PremiumFlashcard({
       } else if (e.key === '3' && onReview) {
         onReview(5) // Easy
       }
-    };
+    }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onReview])
 
   return (
     <div className="space-y-4 w-full">
-      {/* Upper Progress Indicator & Difficulty Badge */}
+      {/* Keyboard Hints + Progress */}
       <div className="flex items-center justify-between text-[10px] font-mono text-ink-tertiary">
         <div className="flex items-center gap-1">
-          <HelpCircle className="w-3 h-3 text-neon-green" />
-          <span>Shortcuts: [Space] to flip, [1, 2, 3] to rate</span>
+          <HelpCircle className="w-3 h-3 text-ink-muted" />
+          <span>Shortcuts: [Space] flip, [1,2,3] rate</span>
         </div>
         {totalCards !== undefined && currentIndex !== undefined && (
           <span>Card {currentIndex + 1} of {totalCards}</span>
         )}
       </div>
 
-      {/* Premium 3D Flip Card Container */}
+      {/* 3D Flip Card */}
       <div
         onClick={() => setFlipped(f => !f)}
-        className={cn('flip-card relative h-44 cursor-pointer select-none group w-full', flipped && 'is-flipped')}
+        className={cn('flip-card relative h-48 cursor-pointer select-none group w-full', flipped && 'is-flipped')}
         role="button"
         aria-label="Click to flip flashcard"
       >
         <div
           className={cn(
-            'flip-card-inner w-full h-full shadow-card-lg rounded-2xl border',
-            flipped ? 'border-neon-biochem-border bg-neon-biochem-dim/15' : 'border-neon-green-border bg-neon-green-dim/15'
+            'flip-card-inner w-full h-full shadow-card-lg rounded-2xl',
+            flipped ? 'bg-ai/[0.06]' : 'bg-neon-green/[0.06]'
           )}
         >
-          {/* Card Front face */}
-          <div className="flip-card-face absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/10 backdrop-blur-md">
+          {/* ── FRONT: Question/Prompt ── */}
+          <div className="flip-card-face absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/20 backdrop-blur-md">
             <div className="flex items-center justify-between w-full">
-              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-neon-green-dim border border-neon-green-border text-neon-green font-bold uppercase tracking-wider">
-                Mnemonic Anchor
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-neon-green/[0.08] text-neon-green border border-neon-green/20 font-bold uppercase tracking-wider">
+                Question
               </span>
               <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                 <button
@@ -98,21 +106,21 @@ export default function PremiumFlashcard({
               </div>
             </div>
 
-            <p className="text-sm sm:text-base font-bold text-white leading-relaxed text-center my-auto px-2">
-              {card.mnemonic.mnemonic}
+            <p className="text-sm sm:text-base font-bold text-white leading-relaxed text-center my-auto px-2 text-balance">
+              {front}
             </p>
 
             <div className="flex items-center justify-between text-[10px] text-ink-tertiary font-mono">
               <span className="truncate">Topic: {card.topic}</span>
-              <span className="shrink-0 text-neon-green/80 hover:underline">Click card to reveal answer →</span>
+              <span className="shrink-0 text-ink-muted">Tap to reveal answer →</span>
             </div>
           </div>
 
-          {/* Card Back face */}
-          <div className="flip-card-face flip-card-back absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/10 backdrop-blur-md">
+          {/* ── BACK: Answer + Explanation + Optional Mnemonic ── */}
+          <div className="flip-card-face flip-card-back absolute inset-0 p-5 rounded-2xl flex flex-col justify-between bg-card/20 backdrop-blur-md">
             <div className="flex items-center justify-between w-full">
-              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-neon-biochem-dim border border-neon-biochem-border text-neon-biochem font-bold uppercase tracking-wider">
-                Anki Flashcard Back
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-mono bg-ai/[0.08] text-ai border border-ai/20 font-bold uppercase tracking-wider">
+                Answer
               </span>
               <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                 <button
@@ -125,43 +133,56 @@ export default function PremiumFlashcard({
               </div>
             </div>
 
-            <div className="min-h-0 overflow-y-auto space-y-2 text-center my-auto px-2 scrollbar-none">
-              <p className="text-xs sm:text-sm font-bold text-white leading-relaxed">
-                Q: {card.mnemonic.ankiFront}
+            <div className="min-h-0 overflow-y-auto space-y-2 my-auto px-2 scrollbar-none">
+              <p className="text-xs sm:text-sm font-bold text-white leading-relaxed text-center text-balance">
+                {back}
               </p>
-              <p className="text-xs text-ink-secondary leading-relaxed whitespace-pre-line">
-                {card.mnemonic.ankiBack}
-              </p>
+              {card.mnemonic.explanation && (
+                <p className="text-[11px] text-ink-secondary leading-relaxed text-center whitespace-pre-line">
+                  {card.mnemonic.explanation}
+                </p>
+              )}
+              {showMnemonic && card.mnemonic.mnemonic && (
+                <div className="mt-2 pt-2 border-t border-border/20">
+                  <div className="flex items-center gap-1.5 text-[9px] text-neon-physio font-mono font-bold uppercase tracking-wider mb-1">
+                    <Brain className="w-3 h-3" />
+                    <span>Memory Aid</span>
+                  </div>
+                  <p className="text-[11px] text-ink-tertiary leading-relaxed italic">
+                    {card.mnemonic.mnemonic}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-[10px] text-ink-tertiary font-mono">
               <span className="truncate">Subject: {card.subject.toUpperCase()}</span>
-              <span className="shrink-0 text-neon-biochem/80">Click card to flip back</span>
+              <span className="shrink-0 text-ink-muted">Tap to flip back</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Confidence rating and quality selectors (Anki RemNote Quizlet styled) */}
+      {/* Confidence rating */}
       {onReview && (
-        <div className="pt-2 animate-fade-in space-y-2.5 bg-card/25 p-4 rounded-2xl border border-border/40">
-          <p className="text-[10px] font-bold uppercase tracking-widest font-mono text-ink-tertiary text-center">Rate recall difficulty to schedule review</p>
+        <div className="pt-2 animate-fade-in space-y-2.5 bg-card p-4 rounded-xl shadow-card-sm">
+          <p className="section-label text-ink-tertiary text-center">Rate recall difficulty to schedule review</p>
           <div className="flex gap-2">
             <button
               onClick={() => onReview(2)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border border-border bg-card hover:border-neon-danger hover:text-neon-danger transition-all active:scale-95 duration-200"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold bg-card border border-border/60 text-ink-secondary hover:border-neon-danger/30 hover:bg-neon-danger/10 hover:text-neon-danger transition-all duration-200 active:scale-95"
             >
               <ThumbsDown className="w-3.5 h-3.5" /> Hard [1]
             </button>
             <button
               onClick={() => onReview(4)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border border-border bg-card hover:border-neon-physio hover:text-neon-physio transition-all active:scale-95 duration-200"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold bg-card border border-border/60 text-ink-secondary hover:border-neon-physio/30 hover:bg-neon-physio/10 hover:text-neon-physio transition-all duration-200 active:scale-95"
             >
               <Meh className="w-3.5 h-3.5" /> Good [2]
             </button>
             <button
               onClick={() => onReview(5)}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border border-border bg-card hover:border-neon-green hover:text-neon-green transition-all active:scale-95 duration-200"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold bg-card border border-border/60 text-ink-secondary hover:border-neon-green/30 hover:bg-neon-green/10 hover:text-neon-green transition-all duration-200 active:scale-95"
             >
               <ThumbsUp className="w-3.5 h-3.5" /> Easy [3]
             </button>

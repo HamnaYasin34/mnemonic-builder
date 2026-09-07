@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  buildFinalPrompt,
+  createPrimaryProvider,
+  createFallbackProvider,
+  PollinationsProvider,
+  type ImageGenerationProvider,
+  DEFAULT_ASPECT_RATIO,
+} from '../../lib/image-provider'
 
 export async function POST(req: NextRequest) {
   let body: any
@@ -7,92 +15,106 @@ export async function POST(req: NextRequest) {
     body = await req.json()
   } catch {
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Invalid request body.',
-      },
-      { status: 400 }
+      { success: false, error: 'Invalid request body.' },
+      { status: 400 },
     )
   }
 
-  const { visualScene, topic } = body
+  const { visualScene, topic, visualStyle } = body
 
   if (!visualScene?.trim()) {
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Visual scene is required.',
-      },
-      { status: 400 }
+      { success: false, error: 'Visual scene is required.' },
+      { status: 400 },
     )
   }
 
-  // NOTE: `visualScene` (built server-side in /api/generate) already contains
-  // a complete, self-consistent art directive: the exact style block (e.g.
-  // "sketchy hand-drawn ink line art" or "Osmosis whiteboard"), the literal
-  // scene to depict, AND a negative prompt (e.g. "NOT 3D render, NOT Pixar
-  // style..."). It is authoritative — we pass it straight through instead of
-  // layering a second, separate style instruction on top of it.
-  const imagePrompt = `Render EXACTLY the following scene and art style. Do not introduce a different art style, do not abstract or symbolize the scene, and do not replace it with an unrelated object, texture, or surface (e.g. do not render this as a whiteboard, glass panel, screen, note, or document with writing on it, unless a surface like that is explicitly and literally part of the scene description itself). Context/topic: ${topic ?? 'Medical concept'}. Scene: ${visualScene}`
+  // Build the final prompt: compiled narrative prompt + model-specific
+  // execution requirements + style-specific instructions (Clinical Ink or
+  // NeuroCanvas). The narrative prompt already carries the §14 structure
+  // (NARRATIVE CONTEXT → SETTING → CHARACTER → BEATS → OBJECTS → ACTIONS →
+  // SPATIAL → MEDICAL → STYLE); this appends the rendering requirements.
+  const finalPrompt = buildFinalPrompt(visualScene, visualStyle ?? 'sketchy')
 
-  try {
-    // Using Pollinations' free, no-auth legacy endpoint (image.pollinations.ai)
-    // rather than the newer gen.pollinations.ai/v1/images/generations, which
-    // runs on a paid "Pollen" credit system — a zero balance there returns a
-    // 402 Payment Required on every request. This endpoint has no such gate.
-    const seed = Math.floor(Math.random() * 999999)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`
+  // ── Retry chain ────────────────────────────────────────────────────────────
+  // 1. Primary: Cloudflare Workers AI → Pollinations (first configured)
+  // 2. On transient failure: retry once with same provider
+  // 3. Pollinations flux-dev (better instruction following)
+  // 4. Pollinations flux-realism (always available, free, no auth)
+  const primary = createPrimaryProvider()
+  const fallback = createFallbackProvider()
 
-    const response = await fetch(imageUrl)
+  // Log provider chain for debugging (visible in dev server console)
+  console.log(`[MnemonicFlow Image] Provider chain: primary=${primary.providerName}, fallback=${fallback.providerName}`)
 
-    if (!response.ok) {
-      console.error('[MnemonicFlow Image API] Pollinations rejected the request:', response.status, await response.text().catch(() => ''))
-      return NextResponse.json(
-        { success: false, error: `Pollinations API error: ${response.status}` },
-        { status: 500 }
-      )
+  const providers: ImageGenerationProvider[] = [primary]
+  // When primary is non-Pollinations (Cloudflare), add both Pollinations tiers:
+  //   flux-dev (better instruction following) → flux-realism (maximum compatibility)
+  if (!primary.providerName.startsWith('pollinations:')) {
+    const pollDev = new PollinationsProvider('flux-dev')
+    providers.push(pollDev)
+  }
+  // Always add flux-realism as last resort (if not already in the chain)
+  if (!providers.some(p => p.providerName === fallback.providerName)) {
+    providers.push(fallback)
+  }
+
+  let lastError: any
+
+  for (const provider of providers) {
+    // Two attempts per provider (handles transient network/model errors)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const result = await provider.generateImage({
+          prompt: finalPrompt,
+          aspectRatio: DEFAULT_ASPECT_RATIO,
+        })
+
+        // Dev-mode model label (not exposed to normal users — see UI section)
+        const modelLabel = process.env.NODE_ENV === 'development'
+          ? provider.providerName
+          : undefined
+
+        return NextResponse.json({
+          success: true,
+          image: {
+            mimeType: result.mimeType,
+            data: result.imageData,
+          },
+          modelLabel,
+        })
+      } catch (err: any) {
+        lastError = err
+        const cause = err?.cause
+        const causeMsg = cause?.message ?? (typeof cause === 'string' ? cause : undefined)
+        console.error(
+          `[MnemonicFlow Image] ${provider.providerName} attempt ${attempt + 1} failed`,
+          err?.message ?? err,
+          cause ? { cause: causeMsg ?? cause } : '',
+        )
+        // Wait briefly before retry (avoid hammering a failing endpoint)
+        if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+      }
     }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
-    const contentType = response.headers.get('content-type') ?? 'image/jpeg'
-
-    return NextResponse.json({
-      success: true,
-      image: {
-        mimeType: contentType,
-        data: base64,
-      },
-    })
-  } catch (err: any) {
-    const cause = err?.cause
-    const causeMsg = cause?.message ?? (typeof cause === 'string' ? cause : undefined)
-    console.error(
-      '[MnemonicFlow Image API]',
-      err,
-      cause ? { cause } : ''
-    )
-
-    const isNetworkError = err?.message === 'fetch failed'
-    const friendlyMsg = isNetworkError
-      ? `Could not reach Pollinations' servers (network error${causeMsg ? `: ${causeMsg}` : ''}). Check your internet connection, VPN/firewall, or antivirus, and make sure you don't have multiple dev servers running at once.`
-      : err?.message ?? 'Image generation failed. Please try again.'
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: friendlyMsg,
-      },
-      { status: 500 }
-    )
   }
+
+  // All providers exhausted — return a friendly error
+  const cause = lastError?.cause
+  const causeMsg = cause?.message ?? (typeof cause === 'string' ? cause : undefined)
+  const isNetworkError = lastError?.message === 'fetch failed'
+  const friendlyMsg = isNetworkError
+    ? `Could not reach the image service (network error${causeMsg ? `: ${causeMsg}` : ''}). Check your internet connection and try again.`
+    : 'Image generation failed. Please try again.'
+
+  return NextResponse.json(
+    { success: false, error: friendlyMsg },
+    { status: 500 },
+  )
 }
 
 export async function GET() {
   return NextResponse.json(
-    {
-      error: 'Method not allowed.',
-    },
-    { status: 405 }
+    { error: 'Method not allowed.' },
+    { status: 405 },
   )
 }

@@ -16,32 +16,32 @@ module.exports = {
 
       // ── Color System ─────────────────────────────────────────
       colors: {
-        // Backgrounds
+        // Backgrounds — pure black cinematic environment
         void:    '#050505',
-        surface: '#0e0e0e',
-        card:    '#111111',
-        elevated:'#161616',
-        border:  '#1e1e1e',
-        subtle:  '#242424',
+        surface: '#0a0d0b',
+        card:    '#0e1110',
+        elevated:'#141816',
+        border:  '#1e2220',
+        subtle:  '#2a2e2c',
 
-        // Text
+        // Text — calibrated for pure black with WCAG-friendly contrast
         ink: {
-          primary:   '#f0f0f0',
-          secondary: '#888888',
-          tertiary:  '#444444',
-          muted:     '#2a2a2a',
+          primary:   '#f0f0f0',   // ~17:1 on #050505 — headings, key labels
+          secondary: '#9ca3a0',   // ~5.5:1 — body text, descriptions
+          tertiary:  '#6b7270',   // ~3.5:1 — captions, metadata, timestamps
+          muted:     '#3d4240',   // ~2:1 — disabled, placeholders, dividers
         },
 
-        // ── Neon Accent System ─────────────────────────────────
+        // ── Accent System ──────────────────────────────────────
         neon: {
-          // Primary — Bioluminescent Green (brand)
+          // Primary — Neon Emerald (brand identity)
           green: {
             DEFAULT: '#0df27d',
-            dim:     '#0df27d33',
-            glow:    '#0df27d66',
-            border:  '#0df27d44',
+            dim:     '#0df27d20',
+            glow:    '#0df27d50',
+            border:  '#0df27d40',
           },
-          // Subject Accents
+          // Subject Accents — restored originals
           anatomy: {
             DEFAULT: '#ff4d6d',
             dim:     '#ff4d6d1a',
@@ -67,30 +67,44 @@ module.exports = {
             glow:    '#c77dff55',
           },
           patho: {
-            DEFAULT: '#ff6b35',
-            dim:     '#ff6b351a',
-            border:  '#ff6b3544',
-            glow:    '#ff6b3555',
+            DEFAULT: '#fb923c',
+            dim:     '#fb923c1a',
+            border:  '#fb923c35',
+            glow:    '#fb923c40',
           },
           micro: {
-            DEFAULT: '#00b4fc',
-            dim:     '#00b4fc1a',
-            border:  '#00b4fc44',
-            glow:    '#00b4fc55',
+            DEFAULT: '#38bdf8',
+            dim:     '#38bdf81a',
+            border:  '#38bdf835',
+            glow:    '#38bdf840',
+          },
+          // Teal secondary
+          cyan: {
+            DEFAULT: '#22d3ee',
+            dim:     '#22d3ee1a',
+            border:  '#22d3ee35',
+            glow:    '#22d3ee40',
+          },
+          // AI accent — deep electric violet
+          ai: {
+            DEFAULT: '#7c5cfc',
+            dim:     '#7c5cfc1a',
+            border:  '#7c5cfc35',
+            glow:    '#7c5cfc40',
           },
           // States
           review: {
-            DEFAULT: '#ff9a00',
-            dim:     '#ff9a001a',
-            border:  '#ff9a0044',
+            DEFAULT: '#f59e0b',
+            dim:     '#f59e0b1a',
+            border:  '#f59e0b44',
           },
           success: {
             DEFAULT: '#0df27d',
             dim:     '#0df27d1a',
           },
           danger: {
-            DEFAULT: '#ff4d4d',
-            dim:     '#ff4d4d1a',
+            DEFAULT: '#ef4444',
+            dim:     '#ef44441a',
           },
         },
       },
@@ -110,29 +124,32 @@ module.exports = {
         '5xl': '2.5rem',
       },
 
-      // ── Box Shadows (Neon Glow System) ────────────────────────
+      // ── Box Shadows (Depth + Restrained Glow) ───────────
       boxShadow: {
-        // Green glows
-        'glow-sm':  '0 0 12px rgba(13, 242, 125, 0.25)',
-        'glow-md':  '0 0 24px rgba(13, 242, 125, 0.35)',
-        'glow-lg':  '0 0 48px rgba(13, 242, 125, 0.4)',
-        'glow-xl':  '0 0 80px rgba(13, 242, 125, 0.5)',
+        // Default card shadow — deep spatial depth
+        'card':     '0 2px 8px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.4)',
 
-        // Subject glows
-        'glow-anatomy': '0 0 20px rgba(255, 77, 109, 0.35)',
-        'glow-pharma':  '0 0 20px rgba(77, 247, 200, 0.35)',
-        'glow-physio':  '0 0 20px rgba(255, 214, 10, 0.35)',
-        'glow-biochem': '0 0 20px rgba(199, 125, 255, 0.35)',
-        'glow-patho':   '0 0 20px rgba(255, 107, 53, 0.35)',
-        'glow-micro':   '0 0 20px rgba(0, 180, 252, 0.35)',
+        // Neon emerald glows — restrained, purposeful
+        'glow-sm':  '0 0 6px rgba(13, 242, 125, 0.08)',
+        'glow-md':  '0 0 10px rgba(13, 242, 125, 0.12)',
+        'glow-lg':  '0 0 14px rgba(13, 242, 125, 0.15)',
 
-        // Card elevation
-        'card-sm': '0 2px 8px rgba(0,0,0,0.6)',
-        'card-md': '0 4px 20px rgba(0,0,0,0.7)',
-        'card-lg': '0 8px 40px rgba(0,0,0,0.8)',
+        // Subject glows — calmed for premium feel
+        'glow-anatomy': '0 0 10px rgba(255, 77, 109, 0.1)',
+        'glow-pharma':  '0 0 10px rgba(77, 247, 200, 0.1)',
+        'glow-physio':  '0 0 10px rgba(255, 214, 10, 0.1)',
+        'glow-biochem': '0 0 10px rgba(199, 125, 255, 0.1)',
+        'glow-patho':   '0 0 10px rgba(251, 146, 60, 0.08)',
+        'glow-micro':   '0 0 10px rgba(56, 189, 248, 0.08)',
 
-        // Inset border glow
-        'inset-glow': 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        // Card elevation — layered depth for pure black
+        'card-sm': '0 1px 2px rgba(0,0,0,0.4)',
+        'card-md': '0 4px 16px rgba(0,0,0,0.5), 0 1px 4px rgba(0,0,0,0.4)',
+        'card-lg': '0 12px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4)',
+
+        // Inset highlight — subtle top-edge light
+        'inset-glow': 'inset 0 1px 0 rgba(255,255,255,0.03)',
+        'inset-highlight': 'inset 0 1px 0 rgba(255,255,255,0.03)',
       },
 
       // ── Backdrop Blur ─────────────────────────────────────────
@@ -143,7 +160,6 @@ module.exports = {
 
       // ── Keyframe Animations ───────────────────────────────────
       keyframes: {
-        // Entry animations
         'fade-up': {
           '0%':   { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
@@ -160,63 +176,18 @@ module.exports = {
           '0%':   { opacity: '0', transform: 'scale(0.95)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
-
-        // Looping effects
-        'pulse-glow': {
-          '0%, 100%': { boxShadow: '0 0 16px rgba(13, 242, 125, 0.3)' },
-          '50%':       { boxShadow: '0 0 32px rgba(13, 242, 125, 0.6)' },
-        },
-        'scan': {
-          '0%':   { transform: 'translateY(-100%)' },
-          '100%': { transform: 'translateY(100vh)' },
-        },
-        'blink': {
-          '0%, 100%': { opacity: '1' },
-          '50%':       { opacity: '0' },
-        },
-        'float': {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%':       { transform: 'translateY(-6px)' },
-        },
-        'spin-slow': {
-          '0%':   { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
-        },
-        // Gradient shift for backgrounds
-        'gradient-x': {
-          '0%, 100%': { backgroundPosition: '0% 50%' },
-          '50%':       { backgroundPosition: '100% 50%' },
-        },
         'shimmer': {
           '0%':   { backgroundPosition: '-400px 0' },
           '100%': { backgroundPosition: '400px 0' },
-        },
-        'flip-in': {
-          '0%':   { transform: 'rotateY(90deg)', opacity: '0' },
-          '100%': { transform: 'rotateY(0deg)', opacity: '1' },
-        },
-        'progress-indeterminate': {
-          '0%':   { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(250%)' },
         },
       },
 
       // ── Animation Utilities ───────────────────────────────────
       animation: {
         'fade-up':      'fade-up 0.4s ease both',
-        'fade-up-slow': 'fade-up 0.7s ease both',
         'fade-in':      'fade-in 0.3s ease both',
         'slide-right':  'slide-right 0.4s ease both',
         'scale-in':     'scale-in 0.2s ease both',
-        'pulse-glow':   'pulse-glow 2.5s ease-in-out infinite',
-        'scan':         'scan 3s linear infinite',
-        'blink':        'blink 1.2s step-start infinite',
-        'float':        'float 3s ease-in-out infinite',
-        'spin-slow':    'spin-slow 8s linear infinite',
-        'gradient-x':   'gradient-x 6s ease infinite',
-        'shimmer':      'shimmer 1.6s linear infinite',
-        'flip-in':      'flip-in 0.35s ease both',
-        'progress-indeterminate': 'progress-indeterminate 1.4s ease-in-out infinite',
       },
 
       // ── Background Sizes ──────────────────────────────────────

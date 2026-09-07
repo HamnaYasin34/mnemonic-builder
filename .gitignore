@@ -1,4 +1,14 @@
-.env.local
-tests/.env.test
+# Dependencies & build output
 node_modules
 .next
+
+# Secrets — NEVER commit real API keys
+.env.local
+tests/.env.test
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# IDE / tool-generated metadata (.qoder/repowiki, knowledge cards, etc.)
+.qoder/

@@ -1,8 +1,18 @@
 /* app/globals.css */
-/* app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Design tokens (CSS custom properties) ─────────────────────────────────── */
+:root {
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+}
 
 /* ── Base resets ────────────────────────────────────────────────────────────── */
 @layer base {
@@ -15,6 +25,13 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-inter), system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    line-height: 1.55;
+    font-feature-settings: 'cv02', 'cv11';
   }
 
   /* Hide scrollbar but keep functionality */
@@ -35,16 +52,36 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #242424;
+    background: #2a2e2c;
     border-radius: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #333;
+    background: #3d4240;
+  }
+
+  /* Scrollbar-thin utility — 2px translucent scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #3d4240 transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 2px;
+    height: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.15);
   }
 
   /* Selection */
   ::selection {
-    background: rgba(13, 242, 125, 0.2);
+    background: rgba(13, 242, 125, 0.15);
     color: #f0f0f0;
   }
 
@@ -60,11 +97,74 @@
   textarea:focus-visible,
   [role="button"]:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px #050505, 0 0 0 4px rgba(13, 242, 125, 0.6);
+    box-shadow: 0 0 0 2px #050505, 0 0 0 4px rgba(13, 242, 125, 0.45);
   }
 
   button {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Universal Button Interaction System ────────────────────────────────
+     Restrained baseline for ALL buttons.  Three tiers:
+       • Default        → subtle lift + brightness (no neon glow)
+       • .glow-btn      → primary CTA (emerald border glow + contained shine sweep)
+       • .glow-btn-soft → secondary CTA (faint emerald hover tint)
+     A global JS listener (ButtonRippleProvider) adds .has-ripple to every
+     button for pointer-positioned click ripple via ::before.
+     Shine ::after is ONLY on .glow-btn — never on generic buttons.
+     All pseudo-elements are clipped by overflow:hidden on the button. */
+
+  /* ── Base: position + transitions ──
+     :where() drops specificity to (0,0,0) so Tailwind utility classes
+     like .absolute, .-translate-y-1\/2, .scale-*, etc. always win when
+     explicitly applied to a button.  This prevents the universal rules
+     from breaking icon-button positioning (e.g. password eye toggle). */
+  :where(button:not(:disabled)) {
+    position: relative;
+    transition: transform 0.2s ease,
+                box-shadow 0.25s ease,
+                filter 0.25s ease;
+  }
+
+  /* ── Hover: subtle lift + brightness — NO neon glow ── */
+  :where(button:not(:disabled):hover) {
+    transform: translateY(-0.5px);
+    filter: brightness(1.04);
+  }
+
+  /* ── Active / click: clean press-down ── */
+  :where(button:not(:disabled):active) {
+    transform: translateY(0) scale(0.975);
+    filter: brightness(1.08);
+    transition-duration: 0.06s;
+  }
+
+  /* ── Click ripple ::before — pointer-positioned via CSS custom properties ── */
+  :where(button.has-ripple::before) {
+    content: '';
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    top: var(--ripple-y, 50%);
+    left: var(--ripple-x, 50%);
+    transform: translate(-50%, -50%) scale(0);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.30) 0%, transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3;
+  }
+  :where(button.has-ripple:active::before) {
+    animation: btn-ripple-expand 0.4s ease-out forwards;
+  }
+
+  /* ── Secondary buttons: neutral hover (no green tint) ── */
+  :where(button:not(:disabled).btn-secondary:hover) {
+    box-shadow: none;
+    border-color: transparent;
+  }
+  :where(button:not(:disabled).btn-secondary:active) {
+    box-shadow: none;
   }
 }
 
@@ -73,31 +173,13 @@
 
   /* Glassmorphism surface */
   .glass {
-    @apply bg-[rgba(14,14,14,0.8)] backdrop-blur-xl border border-border;
+    @apply bg-[rgba(8,10,9,0.85)] backdrop-blur-2xl;
   }
 
-  /* Neon text glow */
-  .text-glow-green {
-    text-shadow: 0 0 12px rgba(13, 242, 125, 0.6);
-  }
-
-  /* Card hover lift */
-  .card-hover {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-md;
-  }
-
-  /* Input focus ring override */
+  /* Input focus ring */
   .input-neon {
-    @apply outline-none focus:ring-1 focus:ring-neon-green-glow focus:border-neon-green-border transition-all;
+    @apply outline-none focus:ring-1 focus:ring-[#0df27d]/40 focus:border-[#0df27d]/50 transition-all;
   }
-
-  /* Neon subject border utilities */
-  .border-neon-anatomy { border-color: rgba(255, 77, 109, 0.35); }
-  .border-neon-pharma  { border-color: rgba(77, 247, 200, 0.35); }
-  .border-neon-physio  { border-color: rgba(255, 214, 10, 0.35); }
-  .border-neon-biochem { border-color: rgba(199, 125, 255, 0.35); }
-  .border-neon-patho   { border-color: rgba(255, 107, 53, 0.35); }
-  .border-neon-micro   { border-color: rgba(0, 180, 252, 0.35); }
 
   /* Skeleton shimmer sweep, layered on top of the base pulse */
   .skeleton-shimmer {
@@ -127,36 +209,436 @@
   }
   .flip-card-back { transform: rotateY(180deg); }
 
-  /* Icon-only button used throughout premium action rows */
-  .icon-btn {
-    @apply relative flex items-center justify-center rounded-lg text-ink-tertiary border border-transparent transition-all duration-200;
+  /* ── Consistent button utilities ─────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-xs font-bold
+           bg-[#0df27d] text-[#050505] transition-all duration-200 min-h-[44px]
+           hover:brightness-110 hover:shadow-glow-sm active:scale-[0.98] disabled:opacity-30 disabled:pointer-events-none;
   }
-  .icon-btn:hover:not(:disabled) {
-    @apply text-ink-primary bg-elevated border-border;
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-xs font-semibold
+           bg-card text-ink-primary transition-all duration-200 min-h-[44px]
+           hover:bg-elevated active:scale-[0.98]
+           disabled:opacity-30 disabled:pointer-events-none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   }
-  .icon-btn:active:not(:disabled) { transform: scale(0.92); }
-  .icon-btn:disabled { @apply opacity-40 pointer-events-none; }
-  .icon-btn:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(13, 242, 125, 0.5);
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium
+           text-ink-tertiary border border-transparent transition-all duration-150
+           hover:text-ink-secondary hover:bg-elevated/60 active:scale-[0.98];
+  }
+
+  /* ── Card surface — shadow-only elevation, no borders ──────────── */
+  .card-surface {
+    @apply bg-card rounded-lg;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  /* ── View container: standard scrollable view wrapper ────────────────── */
+  .view-container {
+    @apply h-full overflow-y-auto scrollbar-none pb-12;
+  }
+
+  /* ─ Section label: uppercase mono micro-label used across all views ──── */
+  .section-label {
+    @apply text-[10px] font-bold uppercase tracking-widest font-mono;
+    color: #6b7270; /* ink-tertiary — readable on dark backgrounds */
+  }
+
+  /* ── Empty state container ───────────────────────────────────────────── */
+  .view-empty {
+    @apply flex flex-col items-center justify-center text-center py-16 px-6;
+  }
+
+  /* ── Skeleton loading block with shimmer ─────────────────────────────── */
+  .skeleton-block {
+    @apply bg-elevated/40 rounded-lg animate-pulse;
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-block::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+    background-size: 400px 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+}
+
+/* Reduced-motion is consolidated at the bottom of this file. */
+
+/* ── Additional utility classes ─────────────────────────────────────────────── */
+@layer utilities {
+  /* Subtle pulse animation for CTA buttons */
+  .animate-subtle-pulse {
+    animation: subtle-pulse 2.5s ease-in-out infinite;
+  }
+
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
-/* ── Reduced motion ─────────────────────────────────────────────────────────── */
+@keyframes subtle-pulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(13, 242, 125, 0.06); }
+  50% { box-shadow: 0 0 10px rgba(13, 242, 125, 0.14); }
+}
+
+/* ── CSS 3D Depth Utilities ─────────────────────────────────────────────────── */
+@layer utilities {
+  /* Depth card — perspective tilt on hover */
+  .depth-card {
+    perspective: 1000px;
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .depth-card:hover {
+    transform: rotateX(0.8deg) rotateY(-0.8deg) translateZ(2px);
+  }
+
+}
+
+/* ── Premium Glow / Shine Interactions ──────────────────────────────────────── */
+
+/* Moving shine sweep across button */
+@keyframes btn-shine {
+  0%   { left: -130%; }
+  100% { left: 130%; }
+}
+
+/* Card ambient glow — breathing border light */
+@keyframes card-glow {
+  0%, 100% { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 0 rgba(13, 242, 125, 0); }
+  50%      { box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 0 32px rgba(13, 242, 125, 0.20); }
+}
+
+/* Logo soft glow */
+@keyframes logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(13, 242, 125, 0.35)); }
+  50%      { filter: drop-shadow(0 0 24px rgba(13, 242, 125, 0.65)); }
+}
+
+/* Success state glow */
+@keyframes success-glow {
+  0%   { box-shadow: 0 0 0 rgba(13, 242, 125, 0); }
+  50%  { box-shadow: 0 0 36px rgba(13, 242, 125, 0.60), 0 0 12px rgba(13, 242, 125, 0.30); }
+  100% { box-shadow: 0 0 16px rgba(13, 242, 125, 0.25); }
+}
+
+/* Error shake + flash */
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  15%      { transform: translateX(-5px); }
+  30%      { transform: translateX(5px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  75%      { transform: translateX(-2px); }
+  90%      { transform: translateX(2px); }
+}
+
+/* Auth card ambient breathing glow */
+@keyframes auth-card-glow {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 rgba(13, 242, 125, 0); }
+  50%      { box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 44px rgba(13, 242, 125, 0.18); }
+}
+
+/* ── Entrance animations ──────────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes glow-appear {
+  0%   { opacity: 0; filter: drop-shadow(0 0 0 rgba(13, 242, 125, 0)); }
+  100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(13, 242, 125, 0.30)); }
+}
+
+/* Floating medical icons */
+@keyframes float-drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(-8px) rotate(2deg); }
+  50%      { transform: translateY(-4px) rotate(-1deg); }
+  75%      { transform: translateY(-12px) rotate(1deg); }
+}
+@keyframes float-drift-reverse {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25%      { transform: translateY(10px) rotate(-2deg); }
+  50%      { transform: translateY(4px) rotate(1deg); }
+  75%      { transform: translateY(8px) rotate(-1deg); }
+}
+
+/* ── Glow utility classes ─────────────────────────────────────────────────── */
+@layer utilities {
+  /* ── Primary CTA: premium emerald glow + contained shine + ripple ── */
+  .glow-btn {
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.22s ease, transform 0.18s ease,
+                filter 0.22s ease, border-color 0.22s ease;
+    border: 1px solid rgba(13, 242, 125, 0.12);
+    box-shadow: 0 0 6px rgba(13, 242, 125, 0.04);
+  }
+  .glow-btn > * {
+    position: relative;
+    z-index: 2;
+  }
+  /* Hover: soft emerald glow + subtle lift + contained shine sweep */
+  .glow-btn:hover:not(:disabled) {
+    box-shadow: 0 0 14px rgba(13, 242, 125, 0.14),
+                0 2px 8px rgba(0, 0, 0, 0.18);
+    filter: brightness(1.07);
+    transform: translateY(-1px);
+    border-color: rgba(13, 242, 125, 0.28);
+  }
+  /* Shine sweep ::after — clipped inside button via overflow:hidden */
+  .glow-btn:hover:not(:disabled)::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -120%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 30%,
+      rgba(255, 255, 255, 0.10) 45%,
+      rgba(255, 255, 255, 0.16) 50%,
+      rgba(255, 255, 255, 0.10) 55%,
+      transparent 70%,
+      transparent 100%
+    );
+    animation: btn-shine 0.5s ease-out;
+    pointer-events: none;
+    z-index: 1;
+  }
+  /* Active: press-down + brief glow pulse */
+  .glow-btn:active:not(:disabled) {
+    box-shadow: 0 0 20px rgba(13, 242, 125, 0.20),
+                0 1px 4px rgba(0, 0, 0, 0.18);
+    transform: translateY(0) scale(0.97);
+    filter: brightness(1.04);
+    transition-duration: 0.06s;
+  }
+
+  /* ── Secondary CTA: subtle lift + faint emerald border ── */
+  .glow-btn-soft {
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 0.22s ease, transform 0.18s ease,
+                filter 0.22s ease, border-color 0.22s ease;
+  }
+  .glow-btn-soft:hover:not(:disabled) {
+    box-shadow: 0 0 10px rgba(13, 242, 125, 0.06),
+                0 2px 6px rgba(0, 0, 0, 0.12);
+    transform: translateY(-0.5px);
+    filter: brightness(1.04);
+    border-color: rgba(13, 242, 125, 0.12);
+  }
+  .glow-btn-soft:active:not(:disabled) {
+    box-shadow: 0 0 12px rgba(13, 242, 125, 0.10);
+    transform: translateY(0) scale(0.97);
+    filter: brightness(1.02);
+    transition-duration: 0.06s;
+  }
+
+  /* Input focus glow — subtle ring */
+  .glow-input {
+    transition: border-color 0.2s ease, box-shadow 0.25s ease;
+  }
+  .glow-input:focus {
+    border-color: rgba(13, 242, 125, 0.45) !important;
+    box-shadow: 0 0 0 3px rgba(13, 242, 125, 0.10) !important;
+  }
+
+  /* Card ambient glow */
+  .glow-card {
+    animation: card-glow 4s ease-in-out infinite;
+  }
+
+  /* Logo glow */
+  .glow-logo {
+    animation: logo-glow 3.5s ease-in-out infinite;
+  }
+
+  /* Link hover illumination */
+  .glow-link {
+    transition: color 0.2s ease, text-shadow 0.3s ease, filter 0.25s ease;
+  }
+  .glow-link:hover {
+    text-shadow: 0 0 18px rgba(13, 242, 125, 0.60);
+    filter: brightness(1.25);
+  }
+
+  /* Success state glow */
+  .glow-success {
+    animation: success-glow 0.6s ease-out forwards;
+  }
+
+  /* Error state shake + red glow */
+  .glow-error {
+    animation: error-shake 0.4s ease-out;
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.30);
+  }
+
+  /* Auth card ambient breathing glow */
+  .glow-auth-card {
+    animation: auth-card-glow 4s ease-in-out infinite;
+  }
+}
+
+/* ── Premium Interaction Keyframes ──────────────────────────────────────────── */
+
+@keyframes btn-ripple-expand {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+  100% { transform: translate(-50%, -50%) scale(6); opacity: 0; }
+}
+
+@keyframes orb-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -25px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+@keyframes orb-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-25px, 20px) scale(0.95); }
+  66% { transform: translate(15px, -30px) scale(1.05); }
+}
+
+@keyframes connection-flow {
+  0% { stroke-dashoffset: 20; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes node-bright {
+  0%, 100% { opacity: 0.15; r: 3; }
+  50% { opacity: 0.8; r: 5; }
+}
+
+@keyframes progress-shine {
+  0% { left: -40%; }
+  100% { left: 140%; }
+}
+
+@keyframes ecg-flow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
+
+/* ── Premium Interaction Utilities ──────────────────────────────────────────── */
+@layer utilities {
+  /* Click ripple — requires .btn-ripple for overflow:hidden; position from ButtonRippleProvider */
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Card hover — subtle elevation */
+  .card-hover-glow {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover-glow:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Premium input focus — subtle ring */
+  .input-focus-glow {
+    transition: border-color 0.2s ease;
+  }
+  .input-focus-glow:focus {
+    border-color: rgba(13, 242, 125, 0.40) !important;
+    box-shadow: 0 0 0 2px rgba(13, 242, 125, 0.08) !important;
+  }
+
+  /* Animated progress bar */
+  .progress-bar-animated {
+    position: relative;
+    overflow: hidden;
+    border-radius: 9999px;
+  }
+  .progress-bar-animated::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.2),
+      transparent
+    );
+    animation: progress-shine 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Animated gradient text */
+  .text-gradient-medical {
+    background: linear-gradient(
+      135deg,
+      #0df27d 0%,
+      #22d3ee 25%,
+      #7c5cfc 50%,
+      #22d3ee 75%,
+      #0df27d 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .animate-gradient-shift {
+    animation: gradient-shift 6s ease infinite;
+  }
+
+  /* Floating background orbs for hero sections */
+  .orb-1 { animation: orb-float-1 18s ease-in-out infinite; }
+  .orb-2 { animation: orb-float-2 22s ease-in-out infinite; }
+
+  /* Knowledge network node/connection */
+  .knowledge-node {
+    animation: node-bright 4s ease-in-out infinite;
+  }
+  .knowledge-connection {
+    stroke-dasharray: 10 10;
+    animation: connection-flow 3s linear infinite;
+  }
+
+  /* ECG continuous flow */
+  .ecg-animate {
+    animation: ecg-flow 3s linear infinite;
+  }
+}
+
+/* ── Accessibility: Respect reduced motion ────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.001ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
-}
-
-/* ── Staggered animation delays ─────────────────────────────────────────────── */
-@layer utilities {
-  .delay-75  { animation-delay: 75ms; }
-  .delay-100 { animation-delay: 100ms; }
-  .delay-150 { animation-delay: 150ms; }
-  .delay-200 { animation-delay: 200ms; }
-  .delay-300 { animation-delay: 300ms; }
-  .delay-500 { animation-delay: 500ms; }
+  .glow-btn:hover:not(:disabled)::after {
+    display: none;
+  }
+  .orb-1, .orb-2, .knowledge-node, .knowledge-connection, .ecg-animate {
+    animation: none !important;
+    opacity: 0.1;
+  }
 }

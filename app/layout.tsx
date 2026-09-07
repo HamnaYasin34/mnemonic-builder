@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Syne, JetBrains_Mono } from 'next/font/google'
+import { Inter, Manrope, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import ButtonRippleProvider from './components/ButtonRippleProvider'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' })
-const syne = Syne({ subsets: ['latin'], variable: '--font-syne', display: 'swap' })
+const syne = Manrope({ subsets: ['latin'], variable: '--font-syne', display: 'swap' })
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap' })
 
 export const metadata: Metadata = {
@@ -20,10 +21,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${syne.variable} ${jetbrains.variable}`}>
-      <head>
-        <meta name="together-key" content={process.env.TOGETHER_API_KEY ?? ''} />
-      </head>
       <body className="antialiased bg-void text-ink-primary">
+        <ButtonRippleProvider />
         {children}
       </body>
     </html>

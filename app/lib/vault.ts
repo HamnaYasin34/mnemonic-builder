@@ -1,4 +1,6 @@
 import { Flashcard, VaultState, MnemonicOutput, SubjectId, ReviewQuality, VaultFilter } from '../types'
+import { getMnemonicAttempts } from './retrieval-validation'
+import { deriveMnemonicId } from './retrieval-validation'
 
 const STORAGE_KEY = 'mnemonicflow_vault_v2'
 const VERSION = 2
@@ -75,9 +77,70 @@ export function getDueCount(cards: Flashcard[]): number {
   return cards.filter(isDue).length
 }
 
+// ── FIX 8: Evidence-aware SRS priority layer ──────────────────────────────────
+// Post-processing on top of SM-2: reads retrieval evidence and adjusts review
+// priority without changing SM-2 intervals, repetitions, or ease factors.
+
+/**
+ * Compute an evidence-based priority score for a flashcard.
+ * Higher score = more review priority. Returns 0 when no evidence exists.
+ */
+export function computeEvidencePriority(card: Flashcard): number {
+  const mnId = deriveMnemonicId(card.topic)
+  const attempts = getMnemonicAttempts(mnId)
+  if (attempts.length === 0) return 0
+
+  let score = 0
+  const falseRecalls = attempts.filter(a => a.falseRecall).length
+  if (falseRecalls > 0) score += 3
+  const highConfErrors = attempts.filter(a => !a.isCorrect && (a.confidence ?? 0) >= 4).length
+  if (highConfErrors > 0) score += 3
+  const accuracy = attempts.filter(a => a.isCorrect).length / attempts.length
+  if (accuracy < 0.5 && attempts.length >= 2) score += 2
+  const delayedFails = attempts.filter(a => a.delayInterval && !a.isCorrect).length
+  if (delayedFails > 0) score += 2
+  const recent = attempts.slice(-3)
+  if (recent.filter(a => !a.isCorrect).length >= 2) score += 1
+  return score
+}
+
+/** Evidence priority label for UI display. */
+export function evidencePriorityLabel(score: number): string | null {
+  if (score >= 5) return 'Needs Reinforcement'
+  if (score >= 3) return 'Review Priority'
+  return null
+}
+
+/**
+ * Apply conservative evidence adjustment to SM-2 interval.
+ * Only applies when evidence is strong and the card has a difficulty signal.
+ * Caps adjustment to prevent negative or zero intervals.
+ */
+export function applyEvidenceIntervalAdjustment(interval: number, evidenceScore: number): number {
+  if (evidenceScore >= 5 && interval > 1) return Math.max(1, Math.round(interval * 0.5))
+  if (evidenceScore >= 3 && interval > 2) return Math.max(1, Math.round(interval * 0.75))
+  return interval
+}
+
+/** Sort flashcards by evidence priority (highest first), then by due date. */
+export function prioritizeCards(cards: Flashcard[]): Flashcard[] {
+  const scored = cards.map(c => ({ card: c, priority: computeEvidencePriority(c) }))
+  return scored
+    .sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority
+      return new Date(a.card.nextReview).getTime() - new Date(b.card.nextReview).getTime()
+    })
+    .map(s => s.card)
+}
+
 export const vault = {
   load(): Flashcard[] {
     return loadRaw().cards
+  },
+
+  /** FIX 8: load cards with evidence-based priority sorting */
+  loadPrioritized(): Flashcard[] {
+    return prioritizeCards(loadRaw().cards)
   },
 
   add(topic: string, subject: SubjectId, mnemonic: MnemonicOutput, imageUrl?: string): Flashcard {
@@ -109,14 +172,19 @@ export const vault = {
 
     const card = state.cards[idx]
     const result = sm2(quality, card.interval, card.easeFactor, card.repetitions)
+
+    // FIX 8: apply evidence-aware interval adjustment as post-processing
+    const evidenceScore = computeEvidencePriority(card)
+    const adjustedInterval = applyEvidenceIntervalAdjustment(result.interval, evidenceScore)
+
     const now = new Date()
 
     const updated: Flashcard = {
       ...card,
-      interval: result.interval,
+      interval: adjustedInterval,
       easeFactor: result.easeFactor,
       repetitions: result.repetitions,
-      nextReview: addDays(now, result.interval).toISOString(),
+      nextReview: addDays(now, adjustedInterval).toISOString(),
       lastReview: now.toISOString(),
       updatedAt: now.toISOString(),
     }
@@ -154,15 +222,21 @@ export const vault = {
 
 export function downloadAnkiCSV(cards: Flashcard[]): void {
   const rows = cards.map(card => {
+    // Phase 2 format: front = question, back = answer + explanation + optional mnemonic
     const front = card.mnemonic.ankiFront.replace(/\t/g, ' ').replace(/\n/g, '<br>')
-    const back = [
+    const backParts = [
       card.mnemonic.ankiBack,
       '',
-      `Mnemonic: ${card.mnemonic.mnemonic ?? ''}`,
-      '',
-      `Story: ${card.mnemonic.story}`,
-      ...(card.imageUrl ? ['', `Image: <a href="${card.imageUrl}">${card.imageUrl}</a>`] : []),
-    ].join('\n').replace(/\t/g, ' ').replace(/\n/g, '<br>')
+      card.mnemonic.explanation || '',
+    ]
+    // Only include mnemonic if explicitly present (optional in Phase 2)
+    if (card.mnemonic.mnemonic) {
+      backParts.push('', `Memory Aid: ${card.mnemonic.mnemonic}`)
+    }
+    if (card.imageUrl) {
+      backParts.push('', `Image: <a href="${card.imageUrl}">${card.imageUrl}</a>`)
+    }
+    const back = backParts.join('\n').replace(/\t/g, ' ').replace(/\n/g, '<br>')
 
     return `${front}\t${back}\tMnemonicFlow Pro::${card.subject}`
   })
