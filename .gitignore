@@ -12,3 +12,6 @@ tsconfig.tsbuildinfo
 
 # IDE / tool-generated metadata (.qoder/repowiki, knowledge cards, etc.)
 .qoder/
+
+.vercel
+.env*

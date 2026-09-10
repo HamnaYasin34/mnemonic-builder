@@ -172,82 +172,154 @@ export function truncatePromptForCloudflare(prompt: string, maxLen = 4000): stri
   return prompt.slice(0, headEnd) + '\n\n[... condensed ...]\n\n' + prompt.slice(tailStart)
 }
 
-/**
- * Compact quality reminder appended to Cloudflare prompts when the full
- * prompt is stripped down. Reinforces mnemonic execution requirements
- * and medical safety in ~250 chars.
- */
-const COMPACT_QUALITY_REMINDER = `\n\nMEMORY FUNCTION > CINEMATIC BEAUTY. Show the story actively happening. Preserve exact mnemonic objects and identities. One coherent scene with visible progression beginning → end. Educational illustration style only — no photorealism, no nudity, no inappropriate content.`
+// ── Cloudflare token-budget constants ──────────────────────────────────────
+// Cloudflare FLUX.1-schnell enforces a hard 2048-token prompt limit.
+// Production evidence: a 3055-char prompt was rejected with
+//   "AiError: Bad input: Error: Length of '/prompt' must be <= 2048"
+// Conservative estimation: ~2 chars/token for English text (standard NLP
+// heuristic). Target 1200 tokens = 40% safety margin below the 2048 limit.
+const CF_TOKEN_BUDGET = 1200
+const CF_CHARS_PER_TOKEN = 2
+const CF_MAX_CHARS = CF_TOKEN_BUDGET * CF_CHARS_PER_TOKEN // 2400
 
 /**
- * Compile a prompt specifically for Cloudflare's 4000-char limit.
+ * Compact quality reminder appended when the prompt is rebuilt from
+ * narrative sections. Reinforces mnemonic execution + medical safety.
+ */
+const COMPACT_QUALITY_REMINDER = `\n\nMEMORY FUNCTION > CINEMATIC BEAUTY. Show the story actively happening. Preserve exact mnemonic objects and identities. One coherent educational illustration — no photorealism, no inappropriate content.`
+
+/**
+ * Extract a named section from the narrative prompt text.
+ * Sections are separated by double newlines (\n\n). Multi-line sections
+ * (e.g. STORY BEATS with one beat per line) are handled by reading until
+ * the next known section header or end of text.
+ */
+function extractNarrativeSection(text: string, headerPrefix: string): string | null {
+  const idx = text.indexOf(headerPrefix)
+  if (idx === -1) return null
+
+  const contentStart = idx
+  const afterHeader = idx + headerPrefix.length
+
+  // Find the next section boundary (\n\n followed by a capitalized header)
+  const nextSectionMatch = text.slice(afterHeader).match(/\n\n(?=[A-Z\/])/)
+  if (nextSectionMatch && nextSectionMatch.index !== undefined) {
+    return text.slice(contentStart, afterHeader + nextSectionMatch.index)
+  }
+
+  // Last section in the text
+  return text.slice(contentStart)
+}
+
+/**
+ * Compile a prompt for Cloudflare's FLUX.1-schnell 2048-token limit.
+ *
+ * Uses a token-budget approach with conservative character estimation
+ * (2 chars/token) rather than a raw character limit.
  *
  * Strategy:
- * 1. If the full prompt (with all instructions) fits → use as-is.
- * 2. If not → use ONLY the narrative prompt (which already contains ALL
- *    mnemonic content: beats, objects, actions, spatial, medical mappings,
- *    visual style) + a compact quality/safety reminder.
+ * 1. If the full prompt fits within the token budget → use as-is.
+ * 2. Otherwise, extract the narrative prompt (stripping appended instruction
+ *    blocks) and rebuild from highest-priority mnemonic sections first.
+ * 3. Sections are added in priority order until the budget is exhausted.
+ * 4. A compact quality/safety reminder is appended if room allows.
  *
- * This preserves 100% of the mnemonic-critical information. The only
- * content sacrificed is redundant emphasis (MODEL_EXECUTION_REQUIREMENTS,
- * style-specific instructions, MEDICAL_SAFETY_INSTRUCTIONS) that the
- * narrative prompt already covers in its own sections.
+ * Section priority (highest first):
+ *   1. STORY BEATS — ordered events (core mnemonic structure)
+ *   2. OBJECT CONSISTENCY — exact symbol identities
+ *   3. ACTION REQUIREMENTS — visible verbs
+ *   4. SPATIAL/SEQUENCE — reading order and progression
+ *   5. MEDICAL ACCURACY — object → medical fact mappings
+ *   6. NARRATIVE CONTEXT — story overview
+ *   7. VISUAL STYLE — illustration style and negative prompt
+ *   8. CHARACTER/GUIDE — protagonist description
+ *   9. SCENE DESCRIPTION — supporting visual reference (lowest priority)
  *
- * Cloudflare's built-in content safety filters provide the safety layer.
+ * All mnemonic-critical content (objects, mappings, actions, spatial
+ * relationships, sequence) is preserved. Only verbose supporting
+ * text (SCENE DESCRIPTION, SETTING) is dropped first.
  */
 export function compilePromptForCloudflare(fullPrompt: string): string {
-  const MAX_LEN = 4000
-
-  if (fullPrompt.length <= MAX_LEN) {
+  // If the full prompt fits within the token budget, use it unchanged
+  if (fullPrompt.length <= CF_MAX_CHARS) {
     return fullPrompt
   }
 
-  // Full prompt exceeds limit. Extract the narrative prompt (everything
-  // before the appended instruction blocks) and use it directly.
-  // The narrative prompt contains:
-  //   NARRATIVE CONTEXT → SETTING → CHARACTER → STORY BEATS →
-  //   OBJECT CONSISTENCY → ACTION REQUIREMENTS → SPATIAL/SEQUENCE →
-  //   MEDICAL ACCURACY → SCENE DESCRIPTION → VISUAL STYLE
-  // ALL mnemonic-critical content is preserved.
+  // Extract the narrative prompt by stripping appended instruction blocks
   let narrativePrompt = fullPrompt
-
   const markers = [
     '\n\nMODEL EXECUTION REQUIREMENTS:',
     '\n\nCLINICAL INK™ STYLE:',
     '\n\nNEUROCANVAS™ STYLE:',
     '\n\nMEDICAL EDUCATION CONTENT SAFETY:',
   ]
-
   for (const marker of markers) {
     const idx = narrativePrompt.indexOf(marker)
     if (idx !== -1) {
       narrativePrompt = narrativePrompt.slice(0, idx)
-      break // All appended blocks come after the first marker
+      break
     }
   }
 
-  // Add compact quality reminder (reinforces key execution + safety)
-  const compact = narrativePrompt.trimEnd() + COMPACT_QUALITY_REMINDER
+  // Parse narrative into individual sections
+  const sections: { key: string; text: string }[] = []
 
-  // Final safety: if even the narrative + reminder exceeds limit,
-  // truncate the narrative's least-critical sections (SCENE DESCRIPTION,
-  // SETTING) while keeping beats, objects, actions, medical mappings.
-  if (compact.length <= MAX_LEN) {
-    return compact
+  const storyBeats = extractNarrativeSection(narrativePrompt, 'STORY BEATS —')
+  if (storyBeats) sections.push({ key: 'beats', text: storyBeats })
+
+  const objectConsistency = extractNarrativeSection(narrativePrompt, 'OBJECT CONSISTENCY —')
+  if (objectConsistency) sections.push({ key: 'objects', text: objectConsistency })
+
+  const actionReqs = extractNarrativeSection(narrativePrompt, 'ACTION REQUIREMENTS —')
+  if (actionReqs) sections.push({ key: 'actions', text: actionReqs })
+
+  const spatialSeq = extractNarrativeSection(narrativePrompt, 'SPATIAL/SEQUENCE REQUIREMENTS —')
+  if (spatialSeq) sections.push({ key: 'spatial', text: spatialSeq })
+
+  const medicalAcc = extractNarrativeSection(narrativePrompt, 'MEDICAL ACCURACY —')
+  if (medicalAcc) sections.push({ key: 'medical', text: medicalAcc })
+
+  const narrativeCtx = extractNarrativeSection(narrativePrompt, 'NARRATIVE CONTEXT —')
+  if (narrativeCtx) sections.push({ key: 'narrative', text: narrativeCtx })
+
+  const visualStyle = extractNarrativeSection(narrativePrompt, 'VISUAL STYLE —')
+  if (visualStyle) sections.push({ key: 'style', text: visualStyle })
+
+  const characterGuide = extractNarrativeSection(narrativePrompt, 'CHARACTER/GUIDE —')
+  if (characterGuide) sections.push({ key: 'character', text: characterGuide })
+
+  const sceneDesc = extractNarrativeSection(narrativePrompt, 'SCENE DESCRIPTION ')
+  if (sceneDesc) sections.push({ key: 'scene', text: sceneDesc })
+
+  // Rebuild prompt in priority order (highest-priority sections first)
+  const priorityOrder = ['beats', 'objects', 'actions', 'spatial', 'medical', 'narrative', 'style', 'character', 'scene']
+  const selected: string[] = []
+  let currentLen = 0
+
+  for (const key of priorityOrder) {
+    const section = sections.find(s => s.key === key)
+    if (!section) continue
+
+    const additionLen = section.text.length + (currentLen > 0 ? 2 : 0) // 2 for \n\n separator
+    if (currentLen + additionLen + COMPACT_QUALITY_REMINDER.length <= CF_MAX_CHARS) {
+      selected.push(section.text)
+      currentLen += additionLen
+    }
   }
 
-  // Remove SCENE DESCRIPTION section (supporting reference only)
-  const sceneDescPattern = new RegExp('\\n\\nSCENE DESCRIPTION \\(supporting reference[^]*?(?=\\n\\nVISUAL STYLE)')
-  let trimmed = compact.replace(sceneDescPattern, '')
-  if (trimmed.length <= MAX_LEN) return trimmed
+  // If no sections fit, fall back to raw character truncation
+  if (selected.length === 0) {
+    return narrativePrompt.slice(0, CF_MAX_CHARS - 50).trimEnd() + '\n\n[... condensed for model limit ...]'
+  }
 
-  // Remove SETTING section
-  const settingPattern = new RegExp('\\n\\nSETTING \\u2014 [^]*?(?=\\n\\n)')
-  trimmed = trimmed.replace(settingPattern, '')
-  if (trimmed.length <= MAX_LEN) return trimmed
+  let result = selected.join('\n\n')
 
-  // Last resort: hard truncate (preserves beginning = narrative + beats)
-  return trimmed.slice(0, MAX_LEN - 50) + '\n\n[... condensed for model limit ...]'
+  // Append compact quality reminder if there is room
+  if (result.length + COMPACT_QUALITY_REMINDER.length <= CF_MAX_CHARS) {
+    result += COMPACT_QUALITY_REMINDER
+  }
+
+  return result
 }
 
 export class CloudflareProvider implements ImageGenerationProvider {
