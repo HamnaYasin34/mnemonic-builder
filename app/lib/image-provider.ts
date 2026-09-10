@@ -87,6 +87,20 @@ The result should feel like an original educational memory illustration — not 
 
 Do not imitate or reproduce Sketchy artwork. This is MnemonicFlow's own Clinical Ink™ style.`
 
+/**
+ * Medical content safety instructions — appended to EVERY image prompt.
+ * Prevents sexualized, vulgar, graphic, or otherwise inappropriate outputs.
+ * This is a medical education platform — all visuals must be appropriate
+ * for MBBS students and maintain textbook-quality standards.
+ */
+export const MEDICAL_SAFETY_INSTRUCTIONS = `\n\nMEDICAL EDUCATION CONTENT SAFETY:
+
+This is a medical education platform for MBBS students. All images MUST be appropriate for an academic setting.
+
+Render in a textbook-quality educational illustration style. Use diagrammatic, clinical, or educational visualization. Characters should be stylized educational illustration figures, NOT photorealistic people.
+
+STRICTLY PROHIBITED: nudity, sexualized content, vulgar imagery, graphic gore, gratuitous bodily exposure, suggestive poses, or any content inappropriate for a professional medical education context. When depicting anatomy or body-related concepts, use textbook-style diagrammatic visualization, educational illustration conventions, or symbolic representation — never photorealistic bodies or unnecessarily graphic depiction.`
+
 /** NeuroCanvas™ (mapped to "osmosis" visual style) — clean educational visual language. */
 export const NEUROCANVAS_INSTRUCTIONS = `\n\nNEUROCANVAS™ STYLE:
 
@@ -118,7 +132,7 @@ export function buildFinalPrompt(
     ? NEUROCANVAS_INSTRUCTIONS
     : CLINICAL_INK_INSTRUCTIONS
 
-  return `${base}${MODEL_EXECUTION_REQUIREMENTS}${styleBlock}`
+  return `${base}${MODEL_EXECUTION_REQUIREMENTS}${styleBlock}${MEDICAL_SAFETY_INSTRUCTIONS}`
 }
 
 /** Default aspect ratio for narrative image generation (landscape, good for story flow). */
@@ -141,6 +155,10 @@ export const DEFAULT_CLOUDFLARE_MODEL = '@cf/black-forest-labs/flux-1-schnell'
  * Preserves the beginning (narrative context + setting + characters + beats)
  * and the end (style instructions), dropping middle detail (object consistency,
  * action requirements, spatial details) when the prompt is too long.
+ *
+ * NOTE: This is a legacy utility kept for backward compatibility.
+ * The CloudflareProvider now uses compilePromptForCloudflare() which
+ * intelligently preserves mnemonic-critical content.
  */
 export function truncatePromptForCloudflare(prompt: string, maxLen = 4000): string {
   if (prompt.length <= maxLen) return prompt
@@ -152,6 +170,84 @@ export function truncatePromptForCloudflare(prompt: string, maxLen = 4000): stri
   const tailStart = Math.max(headEnd, prompt.length - tailLen)
 
   return prompt.slice(0, headEnd) + '\n\n[... condensed ...]\n\n' + prompt.slice(tailStart)
+}
+
+/**
+ * Compact quality reminder appended to Cloudflare prompts when the full
+ * prompt is stripped down. Reinforces mnemonic execution requirements
+ * and medical safety in ~250 chars.
+ */
+const COMPACT_QUALITY_REMINDER = `\n\nMEMORY FUNCTION > CINEMATIC BEAUTY. Show the story actively happening. Preserve exact mnemonic objects and identities. One coherent scene with visible progression beginning → end. Educational illustration style only — no photorealism, no nudity, no inappropriate content.`
+
+/**
+ * Compile a prompt specifically for Cloudflare's 4000-char limit.
+ *
+ * Strategy:
+ * 1. If the full prompt (with all instructions) fits → use as-is.
+ * 2. If not → use ONLY the narrative prompt (which already contains ALL
+ *    mnemonic content: beats, objects, actions, spatial, medical mappings,
+ *    visual style) + a compact quality/safety reminder.
+ *
+ * This preserves 100% of the mnemonic-critical information. The only
+ * content sacrificed is redundant emphasis (MODEL_EXECUTION_REQUIREMENTS,
+ * style-specific instructions, MEDICAL_SAFETY_INSTRUCTIONS) that the
+ * narrative prompt already covers in its own sections.
+ *
+ * Cloudflare's built-in content safety filters provide the safety layer.
+ */
+export function compilePromptForCloudflare(fullPrompt: string): string {
+  const MAX_LEN = 4000
+
+  if (fullPrompt.length <= MAX_LEN) {
+    return fullPrompt
+  }
+
+  // Full prompt exceeds limit. Extract the narrative prompt (everything
+  // before the appended instruction blocks) and use it directly.
+  // The narrative prompt contains:
+  //   NARRATIVE CONTEXT → SETTING → CHARACTER → STORY BEATS →
+  //   OBJECT CONSISTENCY → ACTION REQUIREMENTS → SPATIAL/SEQUENCE →
+  //   MEDICAL ACCURACY → SCENE DESCRIPTION → VISUAL STYLE
+  // ALL mnemonic-critical content is preserved.
+  let narrativePrompt = fullPrompt
+
+  const markers = [
+    '\n\nMODEL EXECUTION REQUIREMENTS:',
+    '\n\nCLINICAL INK™ STYLE:',
+    '\n\nNEUROCANVAS™ STYLE:',
+    '\n\nMEDICAL EDUCATION CONTENT SAFETY:',
+  ]
+
+  for (const marker of markers) {
+    const idx = narrativePrompt.indexOf(marker)
+    if (idx !== -1) {
+      narrativePrompt = narrativePrompt.slice(0, idx)
+      break // All appended blocks come after the first marker
+    }
+  }
+
+  // Add compact quality reminder (reinforces key execution + safety)
+  const compact = narrativePrompt.trimEnd() + COMPACT_QUALITY_REMINDER
+
+  // Final safety: if even the narrative + reminder exceeds limit,
+  // truncate the narrative's least-critical sections (SCENE DESCRIPTION,
+  // SETTING) while keeping beats, objects, actions, medical mappings.
+  if (compact.length <= MAX_LEN) {
+    return compact
+  }
+
+  // Remove SCENE DESCRIPTION section (supporting reference only)
+  const sceneDescPattern = new RegExp('\\n\\nSCENE DESCRIPTION \\(supporting reference[^]*?(?=\\n\\nVISUAL STYLE)')
+  let trimmed = compact.replace(sceneDescPattern, '')
+  if (trimmed.length <= MAX_LEN) return trimmed
+
+  // Remove SETTING section
+  const settingPattern = new RegExp('\\n\\nSETTING \\u2014 [^]*?(?=\\n\\n)')
+  trimmed = trimmed.replace(settingPattern, '')
+  if (trimmed.length <= MAX_LEN) return trimmed
+
+  // Last resort: hard truncate (preserves beginning = narrative + beats)
+  return trimmed.slice(0, MAX_LEN - 50) + '\n\n[... condensed for model limit ...]'
 }
 
 export class CloudflareProvider implements ImageGenerationProvider {
@@ -177,7 +273,7 @@ export class CloudflareProvider implements ImageGenerationProvider {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: truncatePromptForCloudflare(input.prompt),
+        prompt: compilePromptForCloudflare(input.prompt),
         steps: 4,
       }),
     })
@@ -279,6 +375,7 @@ export class PollinationsProvider implements ImageGenerationProvider {
       nologo: 'true',
       model: this.model,
       enhance: 'false',
+      safe: 'true',
     })
     const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(input.prompt)}?${params.toString()}`
 

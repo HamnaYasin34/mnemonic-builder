@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   buildFinalPrompt,
   createPrimaryProvider,
-  createFallbackProvider,
   createPremiumProvider,
   PollinationsProvider,
   type ImageGenerationProvider,
@@ -39,16 +38,16 @@ export async function POST(req: NextRequest) {
 
   // ── Retry chain ────────────────────────────────────────────────────────────
   // Provider priority (first configured wins):
-  //   1. Gemini Pro Image   (if GEMINI_API_KEY — best for long narrative prompts)
-  //   2. Cloudflare Workers AI (if CLOUDFLARE_* — free 100K neurons/day)
-  //   3. Pollinations flux-dev   (always available, good instruction following)
-  //   4. Pollinations flux-realism (last resort — maximum compatibility)
+  //   1. Cloudflare Workers AI (if CLOUDFLARE_* — free 100K neurons/day, built-in safety filters)
+  //   2. Gemini Pro Image      (if GEMINI_API_KEY — best for long narrative prompts)
+  //   3. Pollinations flux-dev (always available, free, good instruction following)
   //
-  // IMPORTANT: flux-realism is a photorealistic model that produces generic
-  // cinematic scenes. It must ONLY be the last-resort fallback — never the
-  // primary. flux-dev follows illustration/style instructions much better.
+  // IMPORTANT: flux-realism (photorealistic) is EXCLUDED from the chain.
+  // It produces inappropriate content for medical/anatomical prompts — even
+  // with safe-mode flags, photorealistic models should not render medical
+  // education content. If all providers below fail, the user sees an error
+  // and can regenerate — this is the correct behavior for a medical platform.
   const primary = createPrimaryProvider()
-  const fallback = createFallbackProvider()
 
   const providers: ImageGenerationProvider[] = [primary]
 
@@ -58,8 +57,8 @@ export async function POST(req: NextRequest) {
     providers.push(premium)
   }
 
-  // Always include Pollinations flux-dev as intermediate (better instruction
-  // following than flux-realism). Skip only if primary is already flux-dev.
+  // Always include Pollinations flux-dev as intermediate/fallback (better
+  // instruction following). Skip only if primary is already flux-dev.
   if (primary.providerName !== 'pollinations:flux-dev') {
     const pollDev = new PollinationsProvider('flux-dev')
     if (!providers.some(p => p.providerName === pollDev.providerName)) {
@@ -67,16 +66,18 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // flux-realism as absolute last resort (if not already in the chain)
-  if (!providers.some(p => p.providerName === fallback.providerName)) {
-    providers.push(fallback)
-  }
-
+  // ── Diagnostic logging (no secrets) ──────────────────────────────────────
+  const hasCloudflareCreds = !!(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_API_TOKEN)
   console.log(`[MnemonicFlow Image] Provider chain: ${providers.map(p => p.providerName).join(' → ')}`)
+  console.log(`[MnemonicFlow Image] Cloudflare credentials: ${hasCloudflareCreds ? 'YES' : 'NO (using Pollinations fallback)'}`)
+  console.log(`[MnemonicFlow Image] Prompt length: ${finalPrompt.length} chars (Cloudflare limit: 4000)`)
 
   let lastError: any
 
-  for (const provider of providers) {
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i]
+    const isFallback = i > 0
+
     // Two attempts per provider (handles transient network/model errors)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -90,6 +91,11 @@ export async function POST(req: NextRequest) {
           ? provider.providerName
           : undefined
 
+        if (isFallback) {
+          console.warn(`[MnemonicFlow Image] FALLBACK used: ${provider.providerName} (primary ${primary.providerName} failed)`)
+        }
+        console.log(`[MnemonicFlow Image] SUCCESS: ${provider.providerName} | model=${result.model} | fallback=${isFallback} | prompt=${finalPrompt.length}chars`)
+
         return NextResponse.json({
           success: true,
           image: {
@@ -97,6 +103,8 @@ export async function POST(req: NextRequest) {
             data: result.imageData,
           },
           modelLabel,
+          provider: provider.providerName,
+          fallbackUsed: isFallback,
         })
       } catch (err: any) {
         lastError = err
